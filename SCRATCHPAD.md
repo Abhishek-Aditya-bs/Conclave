@@ -34,6 +34,66 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-25 — M5 (Python LangGraph) gotchas
+
+1. **uv + Python 3.12 is the right combo for 2026.** `uv sync --extra dev`
+   resolves and installs in ~8s. The Python deps file (`agents/pyproject.toml`)
+   is the source of truth — no `requirements.txt`, no `setup.py`. `.python-version`
+   pins to 3.12; uv auto-fetches that interpreter if missing.
+2. **grpc_tools.protoc emits flat-namespace imports.** `baseline_pb2_grpc.py`
+   contains `import baseline_pb2` at the top — not `from . import baseline_pb2`.
+   So putting all three generated modules under one package directory only
+   works if that directory is on `sys.path`. Solution: keep a committed
+   `deliberation/_proto/__init__.py` that does `sys.path.insert(0,
+   os.path.dirname(__file__))`. The generated `_pb2*.py` files themselves are
+   gitignored — `gen_protos.sh` recreates them on every `m5-install`.
+3. **`anthropic` SDK uses tool-use for structured output.** No
+   `response_format=json_schema` (yet). The pattern is: declare a tool whose
+   `input_schema` matches your output shape, then set
+   `tool_choice={"type": "tool", "name": "<tool_name>"}` so the model MUST
+   call it. Then read `response.content` for the `tool_use` block and pull
+   `block.input` as the structured payload.
+4. **Anthropic prompt-caching needs explicit opt-in.** Mark the system
+   prompt as `{"type": "text", "text": "...", "cache_control": {"type":
+   "ephemeral"}}`. The default is no caching. Worth doing for M5 because
+   the system prompt is identical across every event.
+5. **`ChatOllama(format="json")` is the lowest-common-denominator
+   structured output for Ollama.** Newer models (Qwen3, Gemma 3+, Llama 3.3+)
+   support `format="json_schema"` via Ollama's structured outputs API, but
+   older ones don't. Stick with `format="json"` + schema-in-prompt + post-hoc
+   validation. The `parse_decision_payload` function does the validation so
+   the same parser serves both backends.
+6. **LangGraph parallel fanout = two `add_edge(source, X)` calls with the
+   same source.** Both downstream nodes run on the same super-step. Joining
+   them at a downstream node is automatic IF each parallel branch writes a
+   DIFFERENT state key (no reducer needed). `errors` uses
+   `Annotated[list[str], operator.add]` as the reducer so the parallel
+   branches can both append.
+7. **TypedDict with `total=False` is the right LangGraph state shape.**
+   `dataclass` doesn't work — LangGraph expects to merge partial dicts back
+   into the state, and dataclass instances need every field. `TypedDict`
+   with `total=False` lets each node return only the keys it owns.
+8. **`grpc.RpcError` can be raised with no `.code()` method.** In tests we
+   construct it as a bare `RpcError()` and monkey-patch `.code = lambda:
+   StatusCode.X`. In production code, defensive coding uses
+   `getattr(exc, "code", lambda: None)()`.
+9. **Mock `BaselineClient` / `GraphClient` with `MagicMock(spec=...)`.**
+   `spec=` constrains the mock to the real class's method signature so a
+   typo in the test (e.g. `client.get_baselines(...)`) fails loudly instead
+   of silently auto-creating a method.
+10. **`StrEnum` (Python 3.11+) is the right base for verdict labels.**
+    Inheriting from both `str` and `Enum` works but ruff (UP042) prefers
+    `StrEnum`. Same string-value semantics, cleaner declaration.
+11. **`pytest-cov` runs as a plugin, not a wrapper.** Configure in
+    `[tool.pytest.ini_options].addopts = ["--cov=deliberation",
+    "--cov-fail-under=80"]`. The `[tool.coverage.run].omit` setting strips
+    generated proto modules from the coverage calculation — mirrors the
+    Java JaCoCo `<excludes>` pattern.
+12. **`m5-test` depends on `m5-gen-proto`, not `m5-install`.** A fresh
+    clone's first `make m5-test` regenerates the protos before running
+    pytest. The generated `*_pb2.py` files are gitignored so this is
+    mandatory.
+
 ### 2026-05-25 — M4 (Graph) gotchas
 
 1. **Spring Boot 4 manages `neo4j-java-driver` at version 6.0.5** (not 5.x). Don't

@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build:
-    name: Build + Test + Coverage
+  java:
+    name: Java — Build + Test + Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -46,4 +46,47 @@ jobs:
           path: |
             **/target/surefire-reports/
             **/target/failsafe-reports/
+          retention-days: 14
+
+  python:
+    name: Python (M5) — Lint + Test + Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: agents
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: latest
+          enable-cache: true
+
+      - name: uv sync
+        run: uv sync --extra dev
+
+      - name: Regenerate proto stubs (validates proto/ is in sync)
+        run: uv run ./scripts/gen_protos.sh
+
+      - name: ruff
+        run: uv run ruff check .
+
+      - name: pytest (with coverage gate)
+        run: uv run pytest
+
+      - name: Upload M5 coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m5-coverage
+          path: agents/htmlcov/
+          if-no-files-found: warn
           retention-days: 14
