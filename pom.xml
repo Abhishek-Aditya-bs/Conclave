@@ -29,7 +29,7 @@
     <modules>
         <module>orchestrator</module>
         <module>baseline</module>
-        <!-- graph module lands in M4 -->
+        <module>graph</module>
     </modules>
 
     <properties>
@@ -48,6 +48,8 @@
         <pgvector.version>0.1.6</pgvector.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
         <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+        <!-- M4: neo4j-java-driver version is managed by Spring Boot's BOM (6.0.x). -->
+
         <!-- These mirror what spring-grpc-dependencies imports — kept in sync manually
              because the BOM's properties aren't visible to consumers. Verify after any
              spring-grpc bump. -->
@@ -115,6 +117,7 @@
                 <artifactId>pgvector</artifactId>
                 <version>${pgvector.version}</version>
             </dependency>
+            <!-- M4: neo4j-java-driver is brought in by Spring Boot's BOM (6.0.x); no override here. -->
         </dependencies>
     </dependencyManagement>
 
@@ -230,8 +233,9 @@
                     <excludes>
                         <!-- Avro-generated event records (M1, M2). -->
                         <exclude>io/conclave/events/**/*</exclude>
-                        <!-- Protobuf-generated gRPC stubs and messages (M3). -->
+                        <!-- Protobuf-generated gRPC stubs and messages (M3, M4). -->
                         <exclude>io/conclave/baseline/proto/**/*</exclude>
+                        <exclude>io/conclave/graph/proto/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

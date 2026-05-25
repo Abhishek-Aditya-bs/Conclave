@@ -1,0 +1,28 @@
+# M4 Graph Reasoner Service configuration.
+
+spring:
+  application:
+    name: conclave-graph
+
+server:
+  port: ${GRAPH_REST_PORT:8082}
+
+grpc:
+  server:
+    port: ${GRAPH_GRPC_PORT:9092}
+
+conclave:
+  graph:
+    neo4j:
+      uri:      ${NEO4J_URI:bolt://localhost:7687}
+      username: ${NEO4J_USER:neo4j}
+      password: ${NEO4J_PASSWORD:conclave-graph}
+    # Max path length the templates are allowed to use. Hardcoded in the queries
+    # too, but exposing here makes the depth-bounded property auditable.
+    max-path-depth: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

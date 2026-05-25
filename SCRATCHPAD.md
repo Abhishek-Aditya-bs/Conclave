@@ -34,6 +34,32 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-25 — M4 (Graph) gotchas
+
+1. **Spring Boot 4 manages `neo4j-java-driver` at version 6.0.5** (not 5.x). Don't
+   override the version in the root pom — Spring Boot's BOM imports
+   `neo4j-java-driver-bom` at the version you set, and an arbitrary version's BOM
+   may not exist on Maven Central. Use Spring Boot's managed version, period.
+2. **`ObjectMapper` is NOT auto-registered as a Spring bean with just
+   `spring-boot-starter-web` in Spring Boot 4.** Three options: (a) add
+   `spring-boot-starter-json` explicitly, (b) instantiate directly in the
+   consumer class (M4 chose this), (c) declare an `ObjectMapper @Bean` in a
+   `@Configuration`. Note: `jackson-databind` was on the classpath the whole
+   time — the JAR isn't the issue, the auto-config registration is.
+3. **Spring's official gRPC starter (`@GrpcService`) works identically across
+   M3 and M4.** No new gotchas; same protobuf-maven-plugin pattern, same
+   `${grpc.version}` + `${protobuf-java.version}` properties at root level.
+4. **Cypher path quantifier `*1..2` means "exactly 1 or 2 hops"** — three-hop
+   targets are NOT in the result set. Worth re-deriving when writing the
+   neighborhood test assertion (got bitten: expected ≥10 neighbors, got 7).
+5. **Neo4j `MERGE` is idempotent but slow on large batches** — for the latency
+   test seed we use `CREATE` for nodes and `MERGE` only for relationships.
+   Trade-off: re-running the seed needs a fresh DB; fine for ITs with
+   per-class Testcontainers.
+6. **`neo4j:5-community` Docker image is multi-arch** (Apple Silicon + linux/amd64),
+   used via Testcontainers' `Neo4jContainer<>(...)`. Same Apple-Silicon-safe
+   pattern as `pgvector/pgvector` in M3.
+
 ### 2026-05-25 — M3 (Baseline) gotchas
 
 1. **Spring Boot 4 removed `TestRestTemplate`.** Use `RestClient` directly with

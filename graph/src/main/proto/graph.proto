@@ -1,0 +1,71 @@
+// CONCLAVE — M4 Graph Reasoner Service gRPC contract.
+//
+// Two RPCs: list_templates (discovery) and execute_template (the workhorse).
+//
+// Templates are domain-scoped — each one is registered for exactly one domain
+// (fraud or security) and only those templates are returned by list_templates
+// for that domain.
+//
+// GraphFinding.attributes is intentionally a JSON string (not a protobuf Struct)
+// because each template emits a different shape and we don't want every consumer
+// to depend on a frozen schema for every finding. Callers parse it with their
+// JSON library of choice. The risk_signal is a normalized [0, 1] hint that the
+// judge agent (M5) uses as one input among several.
+syntax = "proto3";
+
+package io.conclave.graph.v1;
+
+option java_package = "io.conclave.graph.proto";
+option java_multiple_files = true;
+option java_outer_classname = "GraphProto";
+
+service GraphReasonerService {
+  rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse);
+  rpc ExecuteTemplate(ExecuteTemplateRequest) returns (ExecuteTemplateResponse);
+}
+
+message ListTemplatesRequest {
+  // "fraud" | "security" — omit to list all.
+  string domain = 1;
+}
+
+message ListTemplatesResponse {
+  repeated TemplateInfo templates = 1;
+}
+
+message TemplateInfo {
+  string name        = 1;
+  string domain      = 2;
+  string description = 3;
+}
+
+message ExecuteTemplateRequest {
+  string template_name = 1;
+  // Free-form string-keyed params (entity IDs, depth caps, etc).
+  map<string, string> params = 2;
+}
+
+message ExecuteTemplateResponse {
+  oneof result {
+    GraphFinding finding   = 1;
+    TemplateNotFound error = 2;
+  }
+}
+
+message GraphFinding {
+  string template_name      = 1;
+  // The entity the query was rooted on (e.g. a cardholder ID, a principal ID).
+  string root_entity_id     = 2;
+  string domain             = 3;
+  // Template-specific structured payload, serialized as JSON.
+  string attributes_json    = 4;
+  // Normalized [0, 1] risk signal — judge agent treats this as a hint, not a verdict.
+  double risk_signal        = 5;
+  // Wall-clock query latency in milliseconds.
+  int64  query_latency_ms   = 6;
+}
+
+message TemplateNotFound {
+  string template_name = 1;
+  string message       = 2;
+}
