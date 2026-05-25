@@ -12,32 +12,40 @@
 |---|---|---|
 | **Scaffolding** | ✅ done | Maven multi-module aggregator, JaCoCo coverage, CI workflow, profile-startup test framework |
 | **M1 — Event Schemas & Ingestion** | ✅ done | Avro schemas (fraud + security), Java producer SDK, Testcontainers integration tests, profile-startup tests |
-| **M2 — Feature Extraction Stream Job** | 🟡 not started | Picks up next session |
-| **M3 — Behavioral Baseline Service** | 🟡 not started | |
+| **M2 — Feature Extraction Stream Job** | ✅ done | `FeatureSpec` abstraction + shared topology shell, per-domain implementations with stateful velocity counters, Avro-enriched schemas, TopologyTestDriver unit tests + Testcontainers ITs |
+| **M3 — Behavioral Baseline Service** | 🟡 not started | Picks up next session |
 | **M4 — Graph Reasoner Service** | 🟡 not started | |
 | **M5 — LangGraph Deliberation Orchestrator** | 🟡 not started | Python sidecar |
 | **M6 — Decision Orchestrator** | 🟡 not started | |
 | **M7 — Audit & Decision API** | 🟡 not started | |
-| **M8 — Reference Configurations** | 🟡 partial | fraud + security schemas exist; feature/graph configs deferred to M2/M4 |
+| **M8 — Reference Configurations** | 🟡 partial | fraud + security raw/enriched schemas + feature specs exist; graph templates deferred to M4 |
 | **M9 — Synthetic Data Generators** | 🟡 not started | |
 | **M10 — Dashboard + Demo Harness** | 🟡 not started | |
 
-**Last green build:** Session 1 (see history below) — 20/20 tests passing, **87% line coverage, 80% branch coverage** (threshold: 80%/70%, fails the build below).
+**Last green build:** Session 2 (see history below) — **34/34 tests passing**, **97% line coverage, 90% branch coverage** (threshold: 80%/70%, fails the build below).
 **Coverage threshold enforced:** 80% line, 70% branch (JaCoCo, fails the build below).
 
 ---
 
 ## ▶️ Next Actions (top of the queue for the next agent)
 
-1. **Start M2 — Feature Extraction Stream Job.** Read [spec.md](spec.md) §6 M2 contract. Implement a Kafka Streams topology in `orchestrator/` under `io.conclave.stream/` that:
-   - Reads from `events.{domain}.raw` (input topic from M1)
-   - Computes features per `FeatureSpec` interface (one impl per domain)
-   - Writes to `events.{domain}.enriched`
-   - Has a Testcontainers integration test that publishes 1000 raw events and asserts 1000 enriched events appear with the expected feature fields.
-2. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
-3. Before merging M2: add an ADR under `docs/adr/` describing the FeatureSpec abstraction.
+1. **Start M3 — Behavioral Baseline Service.** Read [spec.md](spec.md) §6 M3 contract.
+   - Create a new Maven module `baseline/` (sibling of `orchestrator/`).
+   - REST + gRPC service: `getBaseline(entityId, domain) → Embedding` and
+     `updateBaseline(entityId, event)`.
+   - Storage: Postgres + pgvector. Use Testcontainers' `PostgreSQLContainer` for tests.
+   - Per-entity 90-day rolling embedding via sentence-transformers (recommend the
+     `all-MiniLM-L6-v2` model — small, fast, 384-dim — or whatever's idiomatic in 2026).
+   - Done means: unit tests for baseline computation, integration test over a 90-day
+     synthetic stream, p99 lookup < 20ms.
+2. **Then M4 — Graph Reasoner Service** (separate session, also a new module).
+3. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
+4. Add ADRs under `docs/adr/` for each new abstraction (storage choice, embedding
+   provider, etc.).
 
 **Do NOT start M5 (Python) until M3 and M4 are at least scaffolded** — M5's gRPC contract depends on them.
+
+**Heads up for M3 module:** the multi-module Maven coverage threshold (80% line / 70% branch) is currently checked per-module. When `baseline/` lands, it will need to clear the same bar — write tests as you go, not after.
 
 ---
 
@@ -72,20 +80,29 @@ CONCLAVE/
 ├── .github/workflows/ci.yml         # CI
 ├── .gitignore
 ├── configs/
-│   ├── fraud/schema.avsc            # M1: PaymentEvent
-│   └── security/schema.avsc         # M1: AuthEvent
+│   ├── fraud/
+│   │   ├── schema.avsc                # M1: PaymentEvent
+│   │   └── enriched-schema.avsc       # M2: EnrichedPaymentEvent
+│   └── security/
+│       ├── schema.avsc                # M1: AuthEvent
+│       └── enriched-schema.avsc       # M2: EnrichedAuthEvent
+├── docs/
+│   └── adr/0001-feature-spec-abstraction.md   # M2 ✅
 ├── orchestrator/                    # Java/Spring service (M1, M2, M6, M7)
 │   ├── pom.xml
 │   └── src/
-│       ├── main/java/io/conclave/ingest/      # M1 ✅
-│       └── test/java/io/conclave/ingest/      # M1 ✅
+│       ├── main/java/io/conclave/
+│       │   ├── ingest/                # M1 ✅
+│       │   └── stream/                # M2 ✅  (FeatureSpec, FraudFeatureSpec, SecurityFeatureSpec, KafkaStreamsConfig)
+│       └── test/java/io/conclave/
+│           ├── ingest/                # M1 ✅
+│           └── stream/                # M2 ✅
 ├── baseline/                        # Java baseline service (M3) — not yet created
 ├── graph/                           # Java graph reasoner (M4) — not yet created
 ├── agents/                          # Python LangGraph (M5) — not yet created
 ├── generators/                      # M9 — not yet created
 ├── dashboard/                       # M10 — not yet created
 ├── website/                         # M10 — not yet created
-├── docs/                            # ADRs — not yet created
 └── benchmark/                       # not yet created
 ```
 
@@ -138,3 +155,43 @@ CONCLAVE/
   - Avro Maven plugin with default settings generates `Instant` (JSR310) for `timestamp-millis` logical type, not `long`. Use `Instant.now()` not `Instant.now().toEpochMilli()`.
 
 **Handoff for Session 2:** Start at M2. See "Next Actions" above. The `FeatureSpec` interface is the key abstraction — make it shape-able for both domains' feature sets. Watch out for the Spring Boot 4 package moves (more autoconfigure-package renames very likely lurking).
+
+### Session 2 — 2026-05-25 — M2 landed (Feature Extraction Stream Job)
+**Agent:** Claude Opus 4.7
+**Started from:** Session 1's commit `ce5a96d`. M1 fully landed, ready for M2.
+
+**Delivered:**
+- Enriched Avro schemas:
+  - [configs/fraud/enriched-schema.avsc](configs/fraud/enriched-schema.avsc) — EnrichedPaymentEvent carries raw fields forward + `cardholderVelocity`, `binRiskScore`, `baselineEntityId`, `graphEntityIds`, `featureExtractedAt`.
+  - [configs/security/enriched-schema.avsc](configs/security/enriched-schema.avsc) — EnrichedAuthEvent + `principalVelocity`, `failedLoginsRecent`, `baselineEntityId`, `graphEntityIds`, `featureExtractedAt`.
+  - Avro plugin include pattern changed from `**/schema.avsc` to `**/*.avsc` so new schema files get auto-picked-up.
+- `io.conclave.stream` package:
+  - `FeatureSpec<R, E>` — generic interface for the per-domain enrichment contract.
+  - `FeatureExtractionTopology` — static builder that takes a `FeatureSpec` and constructs the full Kafka Streams `Topology` (the shared shell).
+  - `FraudFeatureSpec` (`@Profile("fraud")`) — stateful enrichment via a `FixedKeyProcessor` + persistent `KeyValueStore<String, Long>` for cardholder velocity.
+  - `SecurityFeatureSpec` (`@Profile("security")`) — two state stores (total + failed-only) keyed by principalId.
+  - `KafkaStreamsConfig` — builds the topology, creates the `KafkaStreams` bean, starts it on `ApplicationReadyEvent`.
+- `TopicConfig` extended to declare the enriched topic in addition to the raw topic.
+- `application.yaml` restructured: `spring.kafka.properties.*` now applies to producer, consumer, AND streams clients. `spring.kafka.streams.state-dir` defaults to `./target/kafka-streams-state`.
+- Dependencies added: `org.apache.kafka:kafka-streams`, `io.confluent:kafka-streams-avro-serde`. The Spring Boot 4 starter `spring-boot-starter-kafka` does NOT bring Kafka Streams — has to be explicit.
+- Tests (14 new — total now 34, all green):
+  - **Unit** ([FraudFeatureSpecTest](orchestrator/src/test/java/io/conclave/stream/FraudFeatureSpecTest.java), 6 tests): `TopologyTestDriver`, no broker. Verifies velocity counter increments per cardholder, all raw fields propagate, BIN risk is deterministic, 100-event pump produces 100 enriched events.
+  - **Unit** ([SecurityFeatureSpecTest](orchestrator/src/test/java/io/conclave/stream/SecurityFeatureSpecTest.java), 5 tests): mirror for AuthEvent + verifies failed-login count only ticks on non-SUCCESS results.
+  - **Integration** ([FeatureExtractionFraudIT](orchestrator/src/test/java/io/conclave/stream/FeatureExtractionFraudIT.java), 2 tests): Testcontainers Kafka, 1000-event round-trip + 2000-event burst.
+  - **Integration** ([FeatureExtractionSecurityIT](orchestrator/src/test/java/io/conclave/stream/FeatureExtractionSecurityIT.java), 1 test): 200 mixed SUCCESS/FAILURE events.
+- ADR-001 ([docs/adr/0001-feature-spec-abstraction.md](docs/adr/0001-feature-spec-abstraction.md)) — the FeatureSpec abstraction, with rejected alternatives.
+- `mvn verify` green. **97% line / 90% branch** coverage on the M1 + M2 code path (up from M1's 87%/80%).
+
+**Build settings changed:**
+- Failsafe now uses `forkCount=1` + `reuseForks=false` so each IT class runs in its own fresh JVM. Required because M2 added `KafkaStreams` to the main code path, and re-using one JVM across multiple `@SpringBootTest` classes caused stale connections and "Kafka Send failed" flakes on the second IT class. Tradeoff: full `mvn verify` now takes ~2:40 (was ~25s).
+
+**New gotchas surfaced in [SCRATCHPAD.md](SCRATCHPAD.md):**
+- Spring Boot 4 `KafkaProperties` lives in `org.springframework.boot.kafka.autoconfigure` (M1 found this); for streams, `buildStreamsProperties()` is no-arg.
+- `kafka-streams` is NOT pulled in by `spring-boot-starter-kafka`; needs explicit dependency.
+- `KafkaStreams` constructor expects `Properties`, not `Map`.
+- `SpecificAvroSerde` lives in `io.confluent:kafka-streams-avro-serde`, separate artifact from `kafka-avro-serializer`.
+- Avro `timestamp-millis` generates `Instant`-typed getters/setters by default.
+- Per-IT-class JVM forking is non-negotiable once `KafkaStreams` runs in the main context — shared JVM accumulates connection state across `@SpringBootTest` classes.
+- IT-level velocity-counter assertions are intrinsically flaky due to Streams' at-least-once semantics + RocksDB checkpoint cadence. Use `TopologyTestDriver` for deterministic counter logic checks (unit tests do this); ITs assert "events arrived and counters advanced > 0" only.
+
+**Handoff for Session 3:** Start at M3 (Behavioral Baseline Service). See "Next Actions" above. Note: M3 is in a NEW Maven module (`baseline/`), not in `orchestrator/`. The grpc-spring-boot-starter community fork may or may not exist for Spring Boot 4 yet — check before committing to the binding approach.

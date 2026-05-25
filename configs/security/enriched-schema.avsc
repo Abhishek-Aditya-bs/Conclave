@@ -1,0 +1,25 @@
+{
+  "type": "record",
+  "name": "EnrichedAuthEvent",
+  "namespace": "io.conclave.events.security",
+  "doc": "Output of the M2 feature-extraction stream job for the SOC configuration. Carries all AuthEvent fields forward + the per-event features the deliberation graph (M5) and downstream agents (M3 behavioral baseliner, M4 graph reasoner) consume. authMethod and result are serialized as their string symbols.",
+  "fields": [
+    {"name": "eventId", "type": "string"},
+    {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "principalId", "type": "string"},
+    {"name": "hostId", "type": "string"},
+    {"name": "sourceIp", "type": "string"},
+    {"name": "authMethod", "type": "string", "doc": "AuthMethod enum symbol (PASSWORD | SSO | MFA | API_KEY | SSH_KEY | CERTIFICATE | OTHER) carried forward as a string."},
+    {"name": "result", "type": "string", "doc": "AuthResult enum symbol (SUCCESS | FAILURE | LOCKED | MFA_REQUIRED | DENIED)."},
+    {"name": "targetResource", "type": ["null", "string"], "default": null},
+    {"name": "userAgent", "type": ["null", "string"], "default": null},
+    {"name": "sessionId", "type": ["null", "string"], "default": null},
+    {"name": "isPrivileged", "type": "boolean"},
+
+    {"name": "principalVelocity", "type": "long", "doc": "Cumulative count of AuthEvents seen for this principalId on this topology instance, including the current event. Window-based variants deferred to M9 (see SCRATCHPAD)."},
+    {"name": "failedLoginsRecent", "type": "long", "doc": "Cumulative count of AuthEvents for this principalId whose result was anything other than SUCCESS, again on this topology instance."},
+    {"name": "baselineEntityId", "type": "string", "doc": "Identifier the M3 behavioral baseline service should be keyed on. For the SOC config this is the principalId."},
+    {"name": "graphEntityIds", "type": {"type": "array", "items": "string"}, "doc": "Distinct node identifiers for M4: principalId, hostId, sourceIp, and targetResource (if present)."},
+    {"name": "featureExtractedAt", "type": {"type": "long", "logicalType": "timestamp-millis"}}
+  ]
+}

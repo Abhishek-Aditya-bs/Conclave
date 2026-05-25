@@ -45,6 +45,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-kafka</artifactId>
         </dependency>
+        <dependency>
+            <!-- M2: Kafka Streams for the feature-extraction topology. -->
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-streams</artifactId>
+        </dependency>
 
         <!-- ===== Avro + Confluent serdes ===== -->
         <dependency>
@@ -61,6 +66,12 @@
                     <artifactId>slf4j-reload4j</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <!-- M2: SpecificAvroSerde for Kafka Streams DSL. -->
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-streams-avro-serde</artifactId>
+            <version>${confluent.version}</version>
         </dependency>
 
         <!-- ===== Test ===== -->

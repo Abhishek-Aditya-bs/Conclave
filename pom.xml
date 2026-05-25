@@ -107,7 +107,7 @@
                                 <sourceDirectory>${project.basedir}/../configs</sourceDirectory>
                                 <outputDirectory>${project.build.directory}/generated-sources/avro</outputDirectory>
                                 <includes>
-                                    <include>**/schema.avsc</include>
+                                    <include>**/*.avsc</include>
                                 </includes>
                                 <stringType>String</stringType>
                                 <enableDecimalLogicalType>true</enableDecimalLogicalType>
@@ -162,6 +162,18 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${surefire.version}</version>
+                <configuration>
+                    <!--
+                        Fork a fresh JVM per IT class. Each IT spins up its own Testcontainers
+                        Kafka broker and starts the full Spring Boot context (including
+                        KafkaStreams). Reusing the JVM across classes leads to dangling
+                        connections, exhausted ephemeral ports, and stale state-store
+                        directories — symptoms first appeared as flaky "Kafka Send failed"
+                        errors on later ITs once M2 added the KafkaStreams bean.
+                    -->
+                    <forkCount>1</forkCount>
+                    <reuseForks>false</reuseForks>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>

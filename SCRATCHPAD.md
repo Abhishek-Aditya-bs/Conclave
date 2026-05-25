@@ -34,6 +34,18 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-25 — M2 (Feature Extraction) gotchas
+
+1. **`kafka-streams` is NOT in `spring-boot-starter-kafka`.** Have to add `org.apache.kafka:kafka-streams` explicitly. Spring Boot 4's slim starters tradeoff bites here.
+2. **`KafkaProperties.buildStreamsProperties()` is no-arg** (same shape as `buildProducerProperties()`). Returns a `Map<String, Object>`.
+3. **`KafkaStreams` constructor wants `Properties`, not `Map`.** Easy mistake; convert with `Properties p = new Properties(); p.putAll(map);`. The other constructor takes the old `org.apache.kafka.streams.StreamsConfig` wrapper.
+4. **`SpecificAvroSerde` lives in `io.confluent:kafka-streams-avro-serde`** — a separate artifact from `kafka-avro-serializer` (which gives you the producer/consumer serializers). Don't confuse them.
+5. **Per-IT-class JVM forking is required once `KafkaStreams` is in the main context.** Adding `<reuseForks>false</reuseForks>` to maven-failsafe-plugin fixed it. Symptom: second `@SpringBootTest` class fails with "Kafka Send failed" / "Bootstrap broker disconnected" even though Testcontainers spins up a fresh broker. Cost: ~+5s per IT class for JVM warmup, but the alternative is silent flakes.
+6. **`@Profile`-conditional `@Component` beans need exactly one match.** If you accidentally `@Profile("fraud", "security")` two beans of the same type, Spring refuses to wire either when both profiles are inactive. Document the wiring in the active-profile yaml.
+7. **`processValues` (FixedKeyProcessor API) is the right replacement for the deprecated `transformValues`** in Kafka Streams 4.x. Takes a `Supplier<FixedKeyProcessor<KIn, VIn, VOut>>` + varargs state-store names. The processor receives `FixedKeyRecord<K, V>` which lets you `record.withValue(...)` for a same-key emit.
+8. **Velocity counter accuracy is a unit-test concern, not an IT concern.** Kafka Streams' at-least-once semantics + RocksDB checkpointing means an event can re-emit with a slightly stale counter during recovery/rebalance. Use `TopologyTestDriver` for deterministic logic verification; assert "counter > 0" at the IT level only.
+9. **State directories pollute across runs.** `target/kafka-streams-state/` and `target/test-streams-state-*` keep their RocksDB files between `mvn verify` invocations. `mvn clean` wipes them. The `Makefile` `clean` target already covers this.
+
 ### 2026-05-25 — Spring Boot 4 modularization landmines (M1)
 
 Hit several Spring Boot 3 → 4 migration traps during M1; documenting so M2+ doesn't re-derive them.

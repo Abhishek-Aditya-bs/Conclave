@@ -14,16 +14,29 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:fraud}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    # Properties that apply to producer, consumer, AND streams clients.
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:mock://conclave-default}
+      auto.register.schemas: true
+      specific.avro.reader: true
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
       properties:
-        schema.registry.url: ${SCHEMA_REGISTRY_URL:mock://conclave-default}
-        auto.register.schemas: true
         # Strong delivery defaults for risk-event streams — order matters.
         enable.idempotence: true
         acks: all
         max.in.flight.requests.per.connection: 5
+    # Streams configuration. application-id is set programmatically (per domain) in
+    # KafkaStreamsConfig — don't duplicate it here.
+    streams:
+      state-dir: ${KAFKA_STREAMS_STATE_DIR:./target/kafka-streams-state}
+      replication-factor: 1
+      properties:
+        commit.interval.ms: 1000
+        # Run the topology with at-least-once semantics for the demo; exactly-once-v2 is a
+        # future hardening pass once we have multi-broker compose infra.
+        processing.guarantee: at_least_once
 
 conclave:
   ingest:

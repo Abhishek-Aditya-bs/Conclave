@@ -9,8 +9,8 @@ import org.springframework.kafka.config.TopicBuilder;
  * Declares the {@link NewTopic} beans for the active domain. Spring Kafka's auto-configured
  * {@code KafkaAdmin} picks these up and creates the topics on startup (idempotently).
  *
- * <p>Only the raw topic is declared in M1; enriched / decisions topics are declared by their
- * owning modules (M2, M6) when those land.
+ * <p>Raw and enriched topics are declared here (the latter is the M2 sink). The decisions
+ * topic (M6) will be added by its owning module.
  */
 @Configuration
 public class TopicConfig {
@@ -18,6 +18,17 @@ public class TopicConfig {
     @Bean
     public NewTopic rawTopic(IngestProperties properties) {
         return TopicBuilder.name(properties.domain().rawTopic())
+                .partitions(properties.rawTopicPartitions())
+                .replicas(properties.replicationFactor())
+                .build();
+    }
+
+    @Bean
+    public NewTopic enrichedTopic(IngestProperties properties) {
+        // Match the raw topic's partition count so M2's stream-to-stream re-keying
+        // doesn't introduce skew. (Kafka Streams will auto-create internal repartition
+        // topics with this same count.)
+        return TopicBuilder.name(properties.domain().enrichedTopic())
                 .partitions(properties.rawTopicPartitions())
                 .replicas(properties.replicationFactor())
                 .build();
