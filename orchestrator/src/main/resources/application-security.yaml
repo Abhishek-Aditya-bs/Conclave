@@ -1,0 +1,7 @@
+# Profile: security
+# Activated by SPRING_PROFILES_ACTIVE=security.
+# See configs/security/schema.avsc for the AuthEvent schema this profile produces.
+
+conclave:
+  ingest:
+    domain: SECURITY

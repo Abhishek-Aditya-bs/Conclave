@@ -1,0 +1,88 @@
+{
+  "type": "record",
+  "name": "PaymentEvent",
+  "namespace": "io.conclave.events.fraud",
+  "doc": "Raw payment event for the fraud-detection configuration (card-not-present transactions). The feature-extraction stream job (M2) consumes this off events.fraud.raw and emits enriched events.",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Globally unique event identifier (UUID v4 string). Producer-assigned; never reused."
+    },
+    {
+      "name": "timestamp",
+      "type": {"type": "long", "logicalType": "timestamp-millis"},
+      "doc": "Event-time in milliseconds since Unix epoch (UTC). NOT broker ingest time."
+    },
+    {
+      "name": "cardholderId",
+      "type": "string",
+      "doc": "Stable opaque identifier for the cardholder/customer. The behavioral baseline (M3) keys on this."
+    },
+    {
+      "name": "cardToken",
+      "type": "string",
+      "doc": "Tokenized card identifier. Never store PAN; the upstream tokenizer produces this."
+    },
+    {
+      "name": "amountMinor",
+      "type": "long",
+      "doc": "Transaction amount in the smallest currency unit (e.g. cents for USD). Always positive; refunds carry a separate event type."
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "doc": "ISO 4217 three-letter currency code (e.g. USD, EUR, INR)."
+    },
+    {
+      "name": "merchantId",
+      "type": "string",
+      "doc": "Stable opaque merchant identifier."
+    },
+    {
+      "name": "merchantCategoryCode",
+      "type": "int",
+      "doc": "ISO 18245 MCC. Drives the BIN/MCC risk feature in M2."
+    },
+    {
+      "name": "bin",
+      "type": "string",
+      "doc": "First 6 digits of the card (Bank Identification Number). Drives the BIN-risk feature."
+    },
+    {
+      "name": "deviceFingerprint",
+      "type": "string",
+      "doc": "Hashed device fingerprint from the upstream JS/SDK collector. One node in the cardholder/device/IP graph (M4)."
+    },
+    {
+      "name": "ipAddress",
+      "type": "string",
+      "doc": "Source IP at transaction time (v4 or v6 textual form). Geolocated downstream for the geo-distance feature."
+    },
+    {
+      "name": "billingCountry",
+      "type": "string",
+      "doc": "ISO 3166-1 alpha-2 country code for the billing address."
+    },
+    {
+      "name": "shippingCountry",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Optional shipping country for physical-goods orders. Absent for digital-only merchants."
+    },
+    {
+      "name": "cardPresent",
+      "type": "boolean",
+      "doc": "True for CP (chip/swipe) flows. The fraud config is CNP-first; CP events still flow through but score lower by default."
+    },
+    {
+      "name": "channel",
+      "type": {
+        "type": "enum",
+        "name": "Channel",
+        "symbols": ["WEB", "MOBILE", "API", "OTHER"]
+      },
+      "doc": "Origin channel of the transaction."
+    }
+  ]
+}

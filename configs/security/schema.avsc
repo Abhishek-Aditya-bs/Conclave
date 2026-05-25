@@ -1,0 +1,75 @@
+{
+  "type": "record",
+  "name": "AuthEvent",
+  "namespace": "io.conclave.events.security",
+  "doc": "Raw authentication/access event for the SOC configuration. Covers logins, SSH sessions, API key use, and access-control evaluations. Consumed off events.security.raw by the M2 feature-extraction stream job.",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Globally unique event identifier (UUID v4 string). Producer-assigned; never reused."
+    },
+    {
+      "name": "timestamp",
+      "type": {"type": "long", "logicalType": "timestamp-millis"},
+      "doc": "Event-time in milliseconds since Unix epoch (UTC). Identity-provider / host-agent clock; expect mild skew between hosts."
+    },
+    {
+      "name": "principalId",
+      "type": "string",
+      "doc": "Stable opaque identifier for the authenticating principal (user, service account, machine identity). The behavioral baseline (M3) keys on this."
+    },
+    {
+      "name": "hostId",
+      "type": "string",
+      "doc": "Stable identifier for the target host or resource owner. One node in the identity/host/resource graph (M4)."
+    },
+    {
+      "name": "sourceIp",
+      "type": "string",
+      "doc": "Source IP of the auth attempt (v4 or v6 textual form)."
+    },
+    {
+      "name": "authMethod",
+      "type": {
+        "type": "enum",
+        "name": "AuthMethod",
+        "symbols": ["PASSWORD", "SSO", "MFA", "API_KEY", "SSH_KEY", "CERTIFICATE", "OTHER"]
+      },
+      "doc": "How the principal authenticated. Drives the lateral-movement detection patterns in M4."
+    },
+    {
+      "name": "result",
+      "type": {
+        "type": "enum",
+        "name": "AuthResult",
+        "symbols": ["SUCCESS", "FAILURE", "LOCKED", "MFA_REQUIRED", "DENIED"]
+      },
+      "doc": "Outcome of the auth attempt."
+    },
+    {
+      "name": "targetResource",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Optional resource path (URL, file path, API endpoint, ARN). Drives the exfiltration / privileged-access patterns."
+    },
+    {
+      "name": "userAgent",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Optional User-Agent / client identifier."
+    },
+    {
+      "name": "sessionId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Optional session identifier. Used to chain related auth events into a session graph for lateral-movement reasoning."
+    },
+    {
+      "name": "isPrivileged",
+      "type": "boolean",
+      "default": false,
+      "doc": "True if the principal is a privileged identity (root/admin/sudoer/elevated role). Raises priors for sensitive resource access."
+    }
+  ]
+}

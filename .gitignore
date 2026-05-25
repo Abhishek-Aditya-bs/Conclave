@@ -1,0 +1,76 @@
+# ---------- Java / Maven ----------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+dependency-reduced-pom.xml
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/jvm.config
+!.mvn/maven.config
+
+# JaCoCo / coverage
+**/jacoco.exec
+**/jacoco-it.exec
+**/site/
+
+# ---------- Generated Avro sources ----------
+**/generated-sources/
+**/generated-test-sources/
+
+# ---------- IDE ----------
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.fleet/
+.project
+.classpath
+.settings/
+.factorypath
+
+# ---------- macOS ----------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ---------- Python (M5) ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ---------- Node (dashboard, website) ----------
+node_modules/
+dist/
+.next/
+.turbo/
+.vite/
+*.log
+.env.local
+.env.*.local
+
+# ---------- Docker / data ----------
+docker-data/
+**/postgres-data/
+**/kafka-data/
+**/neo4j-data/
+
+# ---------- Local secrets ----------
+.env
+*.local
+
+# ---------- OS / scratch ----------
+*.swp
+*.swo
+*~

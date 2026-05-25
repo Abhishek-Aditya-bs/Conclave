@@ -1,0 +1,40 @@
+# CONCLAVE orchestrator — shared config.
+#
+# The active Spring profile picks the domain. Set either:
+#   SPRING_PROFILES_ACTIVE=fraud
+# or
+#   SPRING_PROFILES_ACTIVE=security
+#
+# Defaults to fraud for local convenience; the demo Makefile switches via env var.
+
+spring:
+  application:
+    name: conclave-orchestrator
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:fraud}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:mock://conclave-default}
+        auto.register.schemas: true
+        # Strong delivery defaults for risk-event streams — order matters.
+        enable.idempotence: true
+        acks: all
+        max.in.flight.requests.per.connection: 5
+
+conclave:
+  ingest:
+    raw-topic-partitions: 3
+    replication-factor: 1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized

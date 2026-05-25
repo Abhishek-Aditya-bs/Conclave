@@ -1,0 +1,7 @@
+# Profile: fraud
+# Activated by SPRING_PROFILES_ACTIVE=fraud (or `spring.profiles.active=fraud`).
+# See configs/fraud/schema.avsc for the PaymentEvent schema this profile produces.
+
+conclave:
+  ingest:
+    domain: FRAUD
