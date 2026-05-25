@@ -34,7 +34,9 @@ import org.testcontainers.utility.DockerImageName;
  * {@link ProfileStartupFraudIT} — same shape, different schema.
  */
 @Testcontainers
-@SpringBootTest(classes = ConclaveApplication.class)
+@SpringBootTest(
+        classes = ConclaveApplication.class,
+        properties = "conclave.orchestrator.enabled=false")
 @ActiveProfiles("security")
 class ProfileStartupSecurityIT {
 

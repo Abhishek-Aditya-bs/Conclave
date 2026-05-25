@@ -49,7 +49,10 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 @SpringBootTest(classes = ConclaveApplication.class,
         properties = {
-                "spring.kafka.streams.state-dir=./target/test-streams-state-fraud"
+                "spring.kafka.streams.state-dir=./target/test-streams-state-fraud",
+                // The M2 IT exercises only the feature-extraction topology;
+                // dropping the M6 slice lets this run without Postgres / M5.
+                "conclave.orchestrator.enabled=false"
         })
 @ActiveProfiles("fraud")
 class FeatureExtractionFraudIT {

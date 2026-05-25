@@ -39,7 +39,11 @@ import org.testcontainers.utility.DockerImageName;
  * container. The scope name is unique per test class so parallel test runs don't collide.
  */
 @Testcontainers
-@SpringBootTest(classes = ConclaveApplication.class)
+// conclave.orchestrator.enabled=false drops the M6 slice (Postgres-backed
+// SchemaInitializer, DecisionConsumer, etc.) so M1's IT doesn't need a DB.
+@SpringBootTest(
+        classes = ConclaveApplication.class,
+        properties = "conclave.orchestrator.enabled=false")
 @ActiveProfiles("fraud")
 class KafkaProducerIT {
 

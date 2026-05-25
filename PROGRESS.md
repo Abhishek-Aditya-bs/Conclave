@@ -16,56 +16,58 @@
 | **M3 — Behavioral Baseline Service** | ✅ done | New `baseline/` Maven module. Postgres + pgvector storage, in-JVM langchain4j MiniLM-L6-v2 embeddings (no Python), EMA rolling update, REST + gRPC dual surface, 90-day synthetic-stream IT, **p99 lookup = 0.74ms** (27× under the 20ms budget) |
 | **M4 — Graph Reasoner Service** | ✅ done | New `graph/` Maven module. Neo4j 5 storage, 4 fixed Cypher templates (2 per domain), depth-bounded queries, REST + gRPC dual surface, **p99 query = 6ms** on ~100K-edge graph (8× under the 50ms budget). ADR-003 records the schema + template strategy |
 | **M5 — LangGraph Deliberation Orchestrator** | ✅ done | New `agents/` Python project (uv-managed). LangGraph state graph: feature → (baseliner ∥ graph_reasoner) → judge with graceful per-node degradation. `JUDGE_LLM_PROVIDER` factory routes between Claude Haiku 4.5 (Anthropic SDK, tool-use structured output) and Ollama (`langchain-ollama`, `format=json`). gRPC server on port 9093. **99 tests, 98% line coverage** (gate: 80%). ADR-004 records the provider-factory rationale |
-| **M6 — Decision Orchestrator** | 🟡 not started | |
+| **M6 — Decision Orchestrator** | ✅ done | New `io.conclave.orchestrator` package inside the existing `orchestrator/` module. @KafkaListener on `events.{domain}.enriched`, calls M5 over gRPC (grpc-netty-shaded), persists to Postgres (decisions JSONB schema), emits JSON on `decisions.{domain}`. DLQ to `decisions.{domain}.failed` with six stable failure-reason codes. Avro→clean-JSON encoder flattens unions for M5's enriched_event_json. **85 orchestrator tests** (71 unit + 14 IT), **90% line / 77% branch** coverage. ADR-005 records the schema + DLQ design |
 | **M7 — Audit & Decision API** | 🟡 not started | |
 | **M8 — Reference Configurations** | 🟡 partial | fraud + security raw/enriched schemas + feature specs exist; graph templates deferred to M4 |
 | **M9 — Synthetic Data Generators** | 🟡 not started | |
 | **M10 — Dashboard + Demo Harness** | 🟡 not started | |
 
-**Last green build:** Session 5 (see history below) — **104/104 Java tests + 99/99 Python tests passing across 5 modules** (orchestrator: 34, baseline: 40, graph: 30, agents: 99). Coverage: orchestrator 97%/80%, baseline 99%/92%, graph 94%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
+**Last green build:** Session 6 (see history below) — **155/155 Java tests + 99/99 Python tests passing across 5 modules** (orchestrator: 85 [34 pre-M6 + 51 M6], baseline: 40, graph: 30, agents: 99). Coverage: orchestrator 90%/77% (post-M6), baseline 99%/92%, graph 94%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
 **Coverage threshold enforced:** 80% line, 70% branch (JaCoCo); 80% line (pytest-cov).
 
 ---
 
 ## ▶️ Next Actions (top of the queue for the next agent)
 
-1. **Start M6 — Decision Orchestrator (Java/Spring).** Goes back into `orchestrator/`,
-   new package `io.conclave.orchestrator/` (don't reuse the existing
-   `io.conclave.ingest` or `io.conclave.stream`). Consumes `events.{domain}.enriched`
-   (Kafka Streams topology output from M2), calls **M5 over gRPC**, persists the
-   decision to Postgres, emits `decisions.{domain}` topic for downstream consumers.
-   - **The M5 gRPC contract is in `agents/proto/deliberation.proto`** — single RPC
-     `DeliberationService.Deliberate`. Generate Java stubs in `orchestrator/` from
-     a copy of that proto (mirror the pattern the M3/M4 modules use). Generated
-     Java package is `io.conclave.deliberation.proto.*`.
-   - **JSON-encode the enriched event** when calling M5; the proto field is
-     `enriched_event_json`. M5 does not consume Avro. Use Jackson on the Java side.
-   - **Failure modes that must degrade gracefully:** M5 timeout, M5 returns
-     `INTERNAL`, Postgres unreachable. Don't lose the event — write to a DLQ topic
-     `decisions.{domain}.failed`.
-   - **p99 budget:** end-to-end (Kafka consume → M5 → Postgres → Kafka emit) must
-     stay under ~750ms to leave headroom against the M5 600ms target.
-2. **Then M7 — Audit & Decision API.** REST endpoints for browsing decisions, plus
-   a `replay` endpoint that re-runs the deliberation on a stored event. Lives in
-   `orchestrator/` under a new `io.conclave.audit` package.
-3. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
-4. Add ADRs under `docs/adr/` for each new abstraction.
+1. **Start M7 — Audit & Decision API.** REST endpoints for browsing decisions,
+   filtering by domain/score/time, plus a `replay` endpoint that re-runs the
+   deliberation on a stored event. Lives in `orchestrator/` under a new
+   `io.conclave.audit` package.
+   - **The decisions table is in place** with all the columns the API needs:
+     `decision_id`, `event_id`, `domain`, `score`, `verdict_label`,
+     `verdict_explanation_md`, `contributing_factors` (JSONB), `latency_ms`,
+     `judge_provider`, `judge_model`, `enriched_event_json`, `created_at`.
+   - **Replay endpoint:** read the `enriched_event_json` from the row, build a
+     fresh `DeliberationRequest`, call M5, return the new Decision (without
+     persisting — the original audit row stays untouched).
+   - The pre-built [DeliberationClient](orchestrator/src/main/java/io/conclave/orchestrator/client/DeliberationClient.java)
+     is the right entry point for replay calls.
+   - Expose OpenAPI / Swagger for the dashboard team.
+2. **Then M9 — Synthetic Data Generators.** Two Java CLIs that publish to
+   `events.{domain}.raw`. See spec §6 M9 for the adversarial pattern catalog.
+3. **Then M10 — Audit Dashboard + Demo Harness.** Vite + React + shadcn/ui on
+   Cloudflare Pages; consumes the M7 REST API.
+4. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
+5. Add ADRs under `docs/adr/` for each new abstraction.
 
-**M5 is wired and ready for M6 to consume.** The deliberation server listens on
-`localhost:9093` by default (configurable via `DELIBERATION_PORT`). It expects
-M3 (`localhost:9091`) and M4 (`localhost:9092`) to be reachable; both targets
-are configurable via `BASELINE_SERVICE_TARGET` / `GRAPH_SERVICE_TARGET`.
+**The end-to-end pipeline now runs.** A raw event published to
+`events.{domain}.raw` flows through M2 (Kafka Streams) → emits on
+`events.{domain}.enriched` → M6 consumes → calls M5 over gRPC →
+persists to Postgres → emits on `decisions.{domain}` (or `.failed`
+on DLQ).
 
-**Heads up for M6:**
-- The `Decision` proto carries `judge_provider` + `judge_model`. **Persist these
-  to the decision row** — the audit UI and the paper's benchmark section both
-  need them (spec §5 caveat: only Haiku-backed runs are quotable).
-- `verdict_explanation_md` is Markdown. The audit table can store it as plain
-  TEXT; M10's dashboard renders it.
-- `contributing_factors` is a repeated proto message — flatten to a JSONB column
-  for query flexibility (filter by factor name, sort by weight).
-- The `latency_ms` M5 returns is the **full graph wallclock** the server
-  measures, not just the judge LLM time. Trust it for end-to-end p99.
+**Heads up for M7:**
+- The `decisions` table has indexes on `(event_id)`, `(domain, score DESC)`,
+  and `(created_at DESC)`. Most expected audit queries are covered.
+  `contributing_factors` is JSONB — use `jsonb_path_ops` GIN if you need
+  to filter by factor name at scale.
+- The `enriched_event_json` column carries the verbatim M5 input — the
+  replay endpoint should never have to walk back to Kafka.
+- Filter audit/benchmark queries by `judge_provider = 'anthropic'` for
+  any number that gets published (spec §5 caveat: Haiku-only).
+- The M6 slice is gated behind `conclave.orchestrator.enabled` (default
+  true). M7 should NOT need its own gate — it's a read-only API and can
+  coexist with the orchestrator under the same flag.
 
 ---
 
@@ -118,16 +120,30 @@ CONCLAVE/
 │       ├── 0001-feature-spec-abstraction.md           # M2 ✅
 │       ├── 0002-baseline-storage-and-embedding.md     # M3 ✅
 │       ├── 0003-graph-templates-and-schema.md         # M4 ✅
-│       └── 0004-judge-llm-provider-factory.md         # M5 ✅
+│       ├── 0004-judge-llm-provider-factory.md         # M5 ✅
+│       └── 0005-decision-persistence-and-dlq.md       # M6 ✅
 ├── orchestrator/                    # Java/Spring service (M1, M2, M6, M7)
 │   ├── pom.xml
 │   └── src/
-│       ├── main/java/io/conclave/
-│       │   ├── ingest/                # M1 ✅
-│       │   └── stream/                # M2 ✅  (FeatureSpec, FraudFeatureSpec, SecurityFeatureSpec, KafkaStreamsConfig)
+│       ├── main/
+│       │   ├── proto/deliberation.proto           # vendored from agents/proto for M6's Java stubs
+│       │   ├── java/io/conclave/
+│       │   │   ├── ingest/                # M1 ✅
+│       │   │   ├── stream/                # M2 ✅
+│       │   │   └── orchestrator/          # M6 ✅
+│       │   │       ├── DecisionConsumer.java      # @KafkaListener on events.{domain}.enriched
+│       │   │       ├── DecisionOrchestrator.java  # workflow: M5 → DB → decisions.{domain}
+│       │   │       ├── client/                    # DeliberationClient + ManagedChannel config
+│       │   │       ├── config/                    # DecisionOrchestratorProperties
+│       │   │       ├── domain/                    # DecisionRecord, ContributingFactorRecord
+│       │   │       ├── encode/                    # Avro → JSON + DeliberationRequestTranslator
+│       │   │       ├── messaging/                 # DecisionPublisher, DlqPublisher, topic config
+│       │   │       └── storage/                   # JdbcDecisionRepository, SchemaInitializer
+│       │   └── resources/application.yaml         # Kafka consumer (Avro), Postgres, orchestrator config
 │       └── test/java/io/conclave/
 │           ├── ingest/                # M1 ✅
-│           └── stream/                # M2 ✅
+│           ├── stream/                # M2 ✅
+│           └── orchestrator/          # M6 ✅  (51 tests: 49 unit + 2 IT)
 ├── baseline/                        # M3 ✅  (Postgres + pgvector, MiniLM in-JVM, REST + gRPC)
 │   ├── pom.xml
 │   └── src/
@@ -549,3 +565,119 @@ Decision proto and MUST be persisted to the decision row — the audit UI and
 the paper both depend on them (spec §5 caveat: only Haiku-backed runs are
 quotable). Latency budget for the M6 hop end-to-end is ~750ms; M5 already
 holds itself to 600ms on the Anthropic path.
+
+### Session 6 — 2026-05-26 — M6 landed (Decision Orchestrator)
+**Agent:** Claude Opus 4.7
+**Started from:** Session 5's commit `e93929c`.
+
+**Delivered:**
+- Vendored [agents/proto/deliberation.proto](agents/proto/deliberation.proto)
+  into [orchestrator/src/main/proto/](orchestrator/src/main/proto/deliberation.proto)
+  and wired the `protobuf-maven-plugin` in the orchestrator pom (mirrors the
+  M3/M4 pattern). Generated Java stubs land in `io.conclave.deliberation.proto.*`
+  (excluded from JaCoCo via root pom).
+- Extended `orchestrator/pom.xml`: added `spring-boot-starter-jdbc` +
+  `postgresql`, `grpc-netty-shaded` + `grpc-protobuf` + `grpc-stub` +
+  `jakarta.annotation-api`, plus Testcontainers `postgresql` + `grpc-inprocess`
+  for tests.
+- New `io.conclave.orchestrator` package under
+  [orchestrator/src/main/java/](orchestrator/src/main/java/io/conclave/orchestrator/):
+  - `domain/` — [DecisionRecord](orchestrator/src/main/java/io/conclave/orchestrator/domain/DecisionRecord.java)
+    + [ContributingFactorRecord](orchestrator/src/main/java/io/conclave/orchestrator/domain/ContributingFactorRecord.java).
+    Records validate in compact constructors; `DecisionRecord` defensively copies
+    the factors list so the audit path is genuinely immutable.
+  - `encode/` — [EnrichedEventJsonEncoder](orchestrator/src/main/java/io/conclave/orchestrator/encode/EnrichedEventJsonEncoder.java)
+    flattens Avro union wrappers (`{"string": "DE"}` → `"DE"`), serializes
+    Instants as epoch millis, and produces the clean JSON M5's Python feature
+    node expects (matches agents/tests/conftest.py fixtures field-for-field).
+    [DeliberationRequestTranslator](orchestrator/src/main/java/io/conclave/orchestrator/encode/DeliberationRequestTranslator.java)
+    pulls `eventId`/`baselineEntityId`/`graphEntityIds` from the Avro record and
+    builds the proto request.
+  - `client/` — [DeliberationClient](orchestrator/src/main/java/io/conclave/orchestrator/client/DeliberationClient.java)
+    (sync gRPC blocking stub + per-call deadline + clock-injected `DecisionRecord`
+    stamping) + [DeliberationClientConfig](orchestrator/src/main/java/io/conclave/orchestrator/client/DeliberationClientConfig.java)
+    (channel with `destroyMethod=shutdown`).
+  - `storage/` — [JdbcDecisionRepository](orchestrator/src/main/java/io/conclave/orchestrator/storage/JdbcDecisionRepository.java)
+    + [SchemaInitializer](orchestrator/src/main/java/io/conclave/orchestrator/storage/SchemaInitializer.java).
+    Idempotent `CREATE TABLE IF NOT EXISTS` on startup; `?::jsonb` parameter
+    cast for the contributing_factors column.
+  - `messaging/` — [DecisionPublisher](orchestrator/src/main/java/io/conclave/orchestrator/messaging/DecisionPublisher.java)
+    + [DlqPublisher](orchestrator/src/main/java/io/conclave/orchestrator/messaging/DlqPublisher.java)
+    + [DecisionTopicConfig](orchestrator/src/main/java/io/conclave/orchestrator/messaging/DecisionTopicConfig.java)
+    + [DecisionKafkaConfig](orchestrator/src/main/java/io/conclave/orchestrator/messaging/DecisionKafkaConfig.java).
+    Separate `KafkaTemplate<String, String>` bean for the JSON-valued decision
+    topics (coexists with M1's Avro template via Spring's type-aware DI).
+  - [DecisionConsumer](orchestrator/src/main/java/io/conclave/orchestrator/DecisionConsumer.java)
+    — `@KafkaListener` driven by SpEL bean references (`#{@enrichedInputTopic}`,
+    `#{@orchestratorConsumerGroup}`) so it stays domain-agnostic.
+  - [DecisionOrchestrator](orchestrator/src/main/java/io/conclave/orchestrator/DecisionOrchestrator.java)
+    — workflow: translate → call M5 → persist → emit. Six failure paths,
+    all DLQ-routed.
+- `EventDomain` extended with `decisionsFailedTopic()` for the DLQ.
+- All M6 components gated behind
+  `@ConditionalOnProperty("conclave.orchestrator.enabled", matchIfMissing=true)`
+  so the older M1/M2 ITs that don't spin up Postgres can disable the M6 slice
+  with one property (`conclave.orchestrator.enabled=false` in `@SpringBootTest`).
+- [application.yaml](orchestrator/src/main/resources/application.yaml) extended
+  with the consumer's Avro deserializer config, `spring.datasource.*`, and
+  the new `conclave.orchestrator.*` block.
+- ADR-005 ([docs/adr/0005-decision-persistence-and-dlq.md](docs/adr/0005-decision-persistence-and-dlq.md))
+  records the decisions schema design (JSONB factors, judge_provider
+  persistence, verbatim event payload), the DLQ failure-reason vocabulary,
+  and the rejected alternatives (normalized factors table, Avro decision schema,
+  no-DLQ retry-on-consumer).
+
+**Tests — 85 orchestrator tests total, all green** (`mvn -pl orchestrator verify`):
+
+  - **Unit (71)**: `ContributingFactorRecordTest` (6),
+    `DecisionRecordTest` (9), `DecisionOrchestratorPropertiesTest` (7),
+    `EnrichedEventJsonEncoderTest` (3 — fraud + security + null-optional),
+    `DeliberationRequestTranslatorTest` (5),
+    `DeliberationClientTest` (3 — in-process gRPC, happy path / INTERNAL /
+    DEADLINE_EXCEEDED), `JdbcDecisionRepositoryTest` (1 — JdbcTemplate mocked,
+    `?::jsonb` cast asserted), `DecisionPublisherTest` (2 — fraud/security
+    topic routing), `DlqPublisherTest` (4 — failure-reason vocab, truncation),
+    `DecisionOrchestratorTest` (9 — every failure path).
+    Plus the 34 existing M1/M2 tests unchanged.
+  - **Integration (14)**: 12 existing M1/M2 ITs untouched + 2 new M6 ITs:
+    `DecisionOrchestratorIT.happy_path_persists_and_emits_decision` and
+    `DecisionOrchestratorIT.m5_unavailable_routes_event_to_dlq`. Both spin up
+    Kafka + Postgres Testcontainers + a real Netty gRPC mock M5 bound to a
+    free loopback port. End-to-end production transports run; the only thing
+    mocked is the M5 behavior.
+- **Coverage: 90% line / 77% branch** on the orchestrator module (well above
+  the 80%/70% gate; ratio comparable to the M1/M2-only baseline of 97%/90%
+  because M6 added ~600 statements with no Avro/proto exclusions left to
+  inflate the ratio).
+
+**Build settings changed:**
+- Root `pom.xml` JaCoCo `<excludes>` extended with
+  `io/conclave/deliberation/proto/**/*` for the new generated stubs.
+- All M6 components gated behind `conclave.orchestrator.enabled` property
+  (`matchIfMissing=true`). Existing M1/M2 ITs add the `=false` override to
+  their `@SpringBootTest(properties = ...)` so they boot without a Postgres
+  container.
+
+**New gotchas surfaced in [SCRATCHPAD.md](SCRATCHPAD.md):**
+- Avro's built-in `JsonEncoder` wraps union types (`{"string": "DE"}`) —
+  unusable for cross-language JSON contracts. Write a schema-walking encoder
+  instead (we did; see EnrichedEventJsonEncoder).
+- `@KafkaListener` SpEL can reference beans by name with `#{@beanName.method()}`
+  syntax, but `@ConfigurationProperties` records register under a verbose
+  `<prefix>-<FQCN>` name that's not SpEL-friendly. Workaround: expose
+  derived String values as named `@Bean` definitions.
+- `@SpringBootTest` Spring contexts load ALL @Components in the module —
+  adding new Postgres-needing beans breaks older ITs that don't spin up
+  Postgres. Gate the new slice behind a property and disable it in the
+  older ITs.
+- Mockito strict stubbing + JdbcTemplate varargs: `when(jdbc.update(anyString(),
+  (Object[])any())).thenReturn(1)` doesn't pattern-match correctly. Drop the
+  stubbing entirely if you don't read the return value — default int return
+  is 0 which is fine.
+
+**Handoff for Session 7:** Start at M7 (Audit & Decision API). See "Next
+Actions" above. The decisions table schema is in place with all columns the
+audit API needs; the replay endpoint can use the existing DeliberationClient
+bean. The orchestrator module's `io.conclave.audit` package is the new home.
+M6 stays gated behind `conclave.orchestrator.enabled`; M7 can ride the same
+flag (or get its own — judgment call when the structure is clearer).

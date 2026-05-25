@@ -27,6 +27,17 @@ spring:
         enable.idempotence: true
         acks: all
         max.in.flight.requests.per.connection: 5
+    consumer:
+      # M6 @KafkaListener consumes enriched events as Avro. The Confluent
+      # deserializer + specific.avro.reader=true above means the listener
+      # method receives a typed EnrichedPaymentEvent / EnrichedAuthEvent
+      # (both implementing IndexedRecord).
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      # group-id is set per-listener via @KafkaListener.groupId so the
+      # decision orchestrator can coexist with future Kafka consumers in
+      # the same process (e.g. an M7 audit-replay listener).
+      auto-offset-reset: earliest
     # Streams configuration. application-id is set programmatically (per domain) in
     # KafkaStreamsConfig — don't duplicate it here.
     streams:
@@ -38,10 +49,30 @@ spring:
         # future hardening pass once we have multi-broker compose infra.
         processing.guarantee: at_least_once
 
+  # ===== M6: Postgres for the decisions audit table =====
+  datasource:
+    url: ${ORCHESTRATOR_DB_URL:jdbc:postgresql://localhost:5432/conclave}
+    username: ${ORCHESTRATOR_DB_USER:conclave}
+    password: ${ORCHESTRATOR_DB_PASSWORD:conclave}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
 conclave:
   ingest:
     raw-topic-partitions: 3
     replication-factor: 1
+  orchestrator:
+    # M5 deliberation service gRPC target.
+    deliberation-target: ${DELIBERATION_TARGET:localhost:9093}
+    # Per-call deadline. 1500ms = M5 600ms p99 target × 2.5 (headroom for
+    # one in-budget retry within the M6 750ms end-to-end target).
+    deliberation-deadline-ms: ${DELIBERATION_DEADLINE_MS:1500}
+    # Stable group id; one logical orchestrator per deployment.
+    kafka-consumer-group-id: ${ORCHESTRATOR_CONSUMER_GROUP_ID:conclave-orchestrator}
+    # Mirror the raw-topic partition count so downstream consumers see the
+    # same shape; 3 for the demo, increase for multi-broker deployments.
+    decisions-topic-partitions: 3
 
 management:
   endpoints:

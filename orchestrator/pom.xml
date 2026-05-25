@@ -14,9 +14,9 @@
     <name>conclave-orchestrator</name>
     <description>
         Java/Spring data-plane service. Hosts:
-          M1 — Event Schemas and Ingestion (io.conclave.ingest)
-          M2 — Feature Extraction Stream Job (io.conclave.stream)        [pending]
-          M6 — Decision Orchestrator      (io.conclave.orchestrator)    [pending]
+          M1 — Event Schemas and Ingestion (io.conclave.ingest)         done
+          M2 — Feature Extraction Stream Job (io.conclave.stream)       done
+          M6 — Decision Orchestrator      (io.conclave.orchestrator)    done
           M7 — Audit and Decision API     (io.conclave.audit)           [pending]
     </description>
 
@@ -36,8 +36,19 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- ===== Postgres (M6 decisions persistence) ===== -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- ===== Kafka ===== -->
@@ -74,6 +85,25 @@
             <version>${confluent.version}</version>
         </dependency>
 
+        <!-- ===== gRPC client (M6 → M5 deliberation) ===== -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+        </dependency>
+        <dependency>
+            <!-- grpc-java's generated code references @Generated. -->
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+
         <!-- ===== Test ===== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -97,7 +127,18 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- For ITs that run an in-process gRPC mock M5 server. -->
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-inprocess</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -108,11 +149,50 @@
     </dependencies>
 
     <build>
+        <extensions>
+            <!--
+                Sets ${os.detected.classifier} so the protobuf plugin below can
+                pull a protoc binary matching the host arch. Same pattern as
+                baseline/ + graph/.
+            -->
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>${os-maven-plugin.version}</version>
+            </extension>
+        </extensions>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.avro</groupId>
                 <artifactId>avro-maven-plugin</artifactId>
             </plugin>
+
+            <!--
+                M6: deliberation.proto → Java + gRPC stubs. The proto is
+                vendored from agents/proto/deliberation.proto. CI's python
+                job validates that vendored copy stays in sync with the
+                Python-side source-of-truth in agents/proto/.
+            -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>${protobuf-maven-plugin.version}</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${protobuf-java.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <pluginId>grpc-java</pluginId>
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>compile-custom</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

@@ -45,7 +45,8 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 @SpringBootTest(classes = ConclaveApplication.class,
         properties = {
-                "spring.kafka.streams.state-dir=./target/test-streams-state-security"
+                "spring.kafka.streams.state-dir=./target/test-streams-state-security",
+                "conclave.orchestrator.enabled=false"
         })
 @ActiveProfiles("security")
 class FeatureExtractionSecurityIT {

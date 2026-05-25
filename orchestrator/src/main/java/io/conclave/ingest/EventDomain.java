@@ -37,4 +37,13 @@ public enum EventDomain {
     public String decisionsTopic() {
         return "decisions." + key;
     }
+
+    /**
+     * Topic carrying decision-orchestration failures (M5 timeout, downstream
+     * DB error, malformed event). M6 publishes here instead of dropping the
+     * event so a downstream replay job can re-attempt or alert.
+     */
+    public String decisionsFailedTopic() {
+        return "decisions." + key + ".failed";
+    }
 }

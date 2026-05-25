@@ -34,6 +34,68 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-26 — M6 (Decision Orchestrator) gotchas
+
+1. **Avro's built-in `JsonEncoder` wraps union types.** A union of
+   `[null, string]` with value `"DE"` serializes as `{"string": "DE"}`,
+   not `"DE"`. Useless for a cross-language JSON contract (M5's Python
+   side would have to special-case every nullable field). Write a
+   schema-walking encoder that strips the wrappers — see
+   `EnrichedEventJsonEncoder`. Also: Avro's `Instant`-typed
+   `timestamp-millis` field maps cleanly to epoch millis (`toEpochMilli()`).
+2. **`@KafkaListener` SpEL doesn't see @ConfigurationProperties records
+   by short name.** `#{ingestProperties.domain().enrichedTopic()}` fails
+   because the bean's actual name is `<prefix>-<FQCN>` (e.g.
+   `conclave.ingest-io.conclave.ingest.IngestProperties`). Workaround:
+   declare derived String `@Bean`s named with single tokens and reference
+   them with `#{@enrichedInputTopic}` / `#{@orchestratorConsumerGroup}`.
+3. **`@SpringBootTest` loads ALL @Components in the module.** Adding new
+   Postgres-needing beans to M6 broke the older M1/M2 ITs that don't spin
+   up Postgres. Two fixes that work:
+   - Gate the new slice behind `@ConditionalOnProperty(name="...",
+     matchIfMissing=true)` and set the property `=false` in the older ITs'
+     `@SpringBootTest(properties = ...)`. We took this path because it's
+     the smallest blast radius.
+   - Stack a `no-decisions` profile and use `@ActiveProfiles({"fraud",
+     "no-decisions"})`. Cleaner-feeling but tangles with the existing
+     `fraud`/`security` profile vocabulary.
+4. **Mockito strict stubbing breaks JdbcTemplate varargs.** The pattern
+   `when(jdbc.update(anyString(), (Object[]) any())).thenReturn(1)`
+   doesn't pattern-match the variadic call. If you don't actually need the
+   return value (and tests usually don't — they assert on what got SENT),
+   just drop the stubbing. Mockito returns `0` for the unstubbed `int`
+   method, which is fine.
+5. **Spring Boot 4 + Postgres JSONB: cast on insert.** Same lesson M3 hit
+   with pgvector. The JDBC driver sends `String` parameters as `text`, but
+   the column type is `jsonb`. Use `?::jsonb` in the prepared SQL so
+   Postgres casts on insert.
+6. **HikariCP doesn't validate the connection at startup.** A misconfigured
+   `spring.datasource.url` won't fail until the first `JdbcTemplate.execute`.
+   So `SchemaInitializer.@PostConstruct` is the actual point where Postgres
+   absence surfaces — gate THAT first if you only want one conditional.
+7. **`@ConfigurationProperties` records vs Validation API.** Spring Boot 4
+   doesn't bundle `jakarta.validation.constraints.*` unless you pull in
+   `spring-boot-starter-validation`. We follow `IngestProperties` and
+   `BaselineProperties` — validate in the compact constructor. Fewer deps,
+   uniform pattern, fail-fast.
+8. **`KafkaTemplate<String, SpecificRecord>` + `KafkaTemplate<String, String>`
+   coexist.** Two `@Bean`-declared `ProducerFactory<K, V>` pairs with
+   different type parameters; Spring's generic-aware DI distinguishes them.
+   No `@Primary` needed.
+9. **In-process gRPC for unit tests (`InProcessChannelBuilder`/`InProcessServerBuilder`).**
+   No port binding required — the channel and server share a name string
+   and route directly. Fast, deterministic, and exercises the real gRPC
+   stack so generated stubs are also under test. Used in
+   `DeliberationClientTest`.
+10. **Real Netty gRPC for ITs (`NettyServerBuilder.forAddress(...)`).**
+    For full @SpringBootTest ITs where the production client (the
+    `ManagedChannelBuilder.forTarget` channel) needs to actually connect
+    over TCP. Bind to a free loopback port picked at runtime via
+    `ServerSocket(0)`. Used in `DecisionOrchestratorIT`.
+11. **Spring Boot's `KafkaListenerEndpointRegistry` is created lazily.**
+    Even with `@ConditionalOnProperty` flipping off the listener, the
+    auto-config still creates the bean. Costs nothing in disabled mode.
+
 ### 2026-05-25 — M5 (Python LangGraph) gotchas
 
 1. **uv + Python 3.12 is the right combo for 2026.** `uv sync --extra dev`

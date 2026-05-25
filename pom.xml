@@ -233,9 +233,10 @@
                     <excludes>
                         <!-- Avro-generated event records (M1, M2). -->
                         <exclude>io/conclave/events/**/*</exclude>
-                        <!-- Protobuf-generated gRPC stubs and messages (M3, M4). -->
+                        <!-- Protobuf-generated gRPC stubs and messages (M3, M4, M6). -->
                         <exclude>io/conclave/baseline/proto/**/*</exclude>
                         <exclude>io/conclave/graph/proto/**/*</exclude>
+                        <exclude>io/conclave/deliberation/proto/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

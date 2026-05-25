@@ -40,7 +40,11 @@ import org.testcontainers.utility.DockerImageName;
  * "both configurations boot from the same binary via env vars."
  */
 @Testcontainers
-@SpringBootTest(classes = ConclaveApplication.class)
+// conclave.orchestrator.enabled=false drops the M6 slice so this IT
+// doesn't need Postgres or a reachable M5 to boot.
+@SpringBootTest(
+        classes = ConclaveApplication.class,
+        properties = "conclave.orchestrator.enabled=false")
 @ActiveProfiles("fraud")
 class ProfileStartupFraudIT {
 
