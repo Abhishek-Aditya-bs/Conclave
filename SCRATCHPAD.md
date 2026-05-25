@@ -34,6 +34,41 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-25 — M3 (Baseline) gotchas
+
+1. **Spring Boot 4 removed `TestRestTemplate`.** Use `RestClient` directly with
+   `@LocalServerPort` injection. See [BaselineRestIT](baseline/src/test/java/io/conclave/baseline/rest/BaselineRestIT.java).
+2. **Multiple `@Service` constructors require `@Autowired` on one.** Spring Boot 4 won't
+   auto-pick a constructor when there are >1 — even when only one is `public`. We hit
+   this with `BaselineService` (production ctor + package-private ctor for `Clock`
+   injection in tests). Annotate the production constructor with `@Autowired`.
+3. **JaCoCo `<excludes>` inside a `<rule>` doesn't filter classes out of coverage.** It
+   excludes BUNDLEs / PACKAGEs from being checked against that rule — different thing.
+   To exclude generated code (Avro, protobuf, etc) from the coverage calculation, put
+   `<excludes>` at the TOP-LEVEL `<configuration>` block of the JaCoCo plugin. Use the
+   `io/conclave/...` slash-format with `**/*` for whole packages.
+4. **Generated protobuf classes need their own package.** Set `java_package` in the
+   proto to a separate package (`io.conclave.baseline.proto`) so the JaCoCo exclude
+   is trivial. Your handwritten gRPC service goes in a different package
+   (`io.conclave.baseline.grpc`).
+5. **`spring-grpc-dependencies` BOM doesn't expose its managed versions as Maven
+   properties.** The `protobuf-maven-plugin` needs `${protobuf-java.version}` and
+   `${grpc.version}` at config time. Define them in the root pom mirroring what the
+   BOM imports (currently `protobuf-java=4.33.4`, `grpc=1.77.1`). Verify after any
+   spring-grpc version bump.
+6. **pgvector text literal needs an explicit `::vector` cast on insert.** Use
+   `INSERT ... VALUES (?, ?, ?::vector, ?, ?)` — without the cast, the driver sends
+   text and Postgres complains the column type is `vector`. See `JdbcBaselineRepository`.
+7. **langchain4j ships `all-MiniLM-L6-v2` as a JAR.** Zero external dependencies — DJL
+   warms the ONNX session on first call (~100ms cold start on Apple M3). Cache the
+   `EmbeddingModel` instance.
+8. **Records with `float[]` fields need manual `equals`/`hashCode`.** Default record
+   `equals` uses reference equality on array fields, which is almost always wrong.
+   Override and use `Arrays.equals(...)` / `Arrays.hashCode(...)`. See `Baseline`.
+9. **pgvector Docker image is multi-arch** (`pgvector/pgvector:pg16`). Wrap in
+   `DockerImageName.parse("pgvector/pgvector:pg16").asCompatibleSubstituteFor("postgres")`
+   so the official `PostgreSQLContainer` accepts it.
+
 ### 2026-05-25 — M2 (Feature Extraction) gotchas
 
 1. **`kafka-streams` is NOT in `spring-boot-starter-kafka`.** Have to add `org.apache.kafka:kafka-streams` explicitly. Spring Boot 4's slim starters tradeoff bites here.

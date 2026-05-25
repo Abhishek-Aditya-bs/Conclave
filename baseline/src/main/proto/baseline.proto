@@ -1,0 +1,65 @@
+// CONCLAVE — M3 Behavioral Baseline Service gRPC contract.
+//
+// Two RPCs: getBaseline (read-only) and updateBaseline (writes/updates an
+// EMA-rolling embedding for an entity within a domain).
+//
+// The REST API mirrors this contract field-for-field; both surfaces sit on top
+// of one shared BaselineService bean.
+syntax = "proto3";
+
+package io.conclave.baseline.v1;
+
+option java_package = "io.conclave.baseline.proto";
+option java_multiple_files = true;
+option java_outer_classname = "BaselineProto";
+
+service BaselineService {
+  // Fetch the current rolling baseline for an entity in a domain. Returns
+  // NOT_FOUND if no events have been observed yet.
+  rpc GetBaseline(GetBaselineRequest) returns (GetBaselineResponse);
+
+  // Append a new textualized event to the entity's rolling baseline and
+  // return the updated embedding. Idempotent on event_id is NOT required
+  // here — the caller is expected to dedupe at the upstream stage.
+  rpc UpdateBaseline(UpdateBaselineRequest) returns (UpdateBaselineResponse);
+}
+
+message GetBaselineRequest {
+  // "fraud" | "security"
+  string domain    = 1;
+  string entity_id = 2;
+}
+
+message GetBaselineResponse {
+  oneof result {
+    Baseline baseline   = 1;
+    NotFound not_found  = 2;
+  }
+}
+
+message UpdateBaselineRequest {
+  string domain      = 1;
+  string entity_id   = 2;
+  // Textualized event — caller's responsibility to build this from the raw
+  // event in a domain-appropriate way (see baseline service docs).
+  string event_text  = 3;
+}
+
+message UpdateBaselineResponse {
+  Baseline baseline = 1;
+}
+
+message Baseline {
+  string entity_id              = 1;
+  string domain                 = 2;
+  // 384-dimensional float vector (all-MiniLM-L6-v2).
+  repeated float embedding      = 3;
+  // Number of events that have contributed to this baseline so far.
+  int64 event_count             = 4;
+  // Wall-clock time of the most recent update, ms since Unix epoch.
+  int64 last_updated_epoch_ms   = 5;
+}
+
+message NotFound {
+  string message = 1;
+}

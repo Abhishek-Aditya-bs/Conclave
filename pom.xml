@@ -28,7 +28,8 @@
 
     <modules>
         <module>orchestrator</module>
-        <!-- baseline, graph modules land in M3 / M4 -->
+        <module>baseline</module>
+        <!-- graph module lands in M4 -->
     </modules>
 
     <properties>
@@ -41,6 +42,17 @@
         <avro.version>1.12.0</avro.version>
         <confluent.version>7.7.1</confluent.version>
         <testcontainers.version>1.20.4</testcontainers.version>
+        <!-- M3 deps -->
+        <spring-grpc.version>1.0.2</spring-grpc.version>
+        <langchain4j.version>1.10.0-beta18</langchain4j.version>
+        <pgvector.version>0.1.6</pgvector.version>
+        <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
+        <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
+        <!-- These mirror what spring-grpc-dependencies imports — kept in sync manually
+             because the BOM's properties aren't visible to consumers. Verify after any
+             spring-grpc bump. -->
+        <grpc.version>1.77.1</grpc.version>
+        <protobuf-java.version>4.33.4</protobuf-java.version>
 
         <!-- Plugin versions -->
         <jacoco.version>0.8.13</jacoco.version>
@@ -84,6 +96,24 @@
                 <version>${testcontainers.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- M3 BOMs -->
+            <dependency>
+                <groupId>org.springframework.grpc</groupId>
+                <artifactId>spring-grpc-dependencies</artifactId>
+                <version>${spring-grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.pgvector</groupId>
+                <artifactId>pgvector</artifactId>
+                <version>${pgvector.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -187,11 +217,23 @@
             <!--
                 JaCoCo coverage. Aggregated thresholds enforced at verify phase.
                 Per-module reports under target/site/jacoco/.
+
+                The <excludes> at the top level apply to every JaCoCo execution: the
+                agent skips instrumenting these classes, AND the report/check goals
+                skip them in coverage calculation.
             -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
+                <configuration>
+                    <excludes>
+                        <!-- Avro-generated event records (M1, M2). -->
+                        <exclude>io/conclave/events/**/*</exclude>
+                        <!-- Protobuf-generated gRPC stubs and messages (M3). -->
+                        <exclude>io/conclave/baseline/proto/**/*</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-unit</id>
@@ -246,11 +288,6 @@
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
-                                    <excludes>
-                                        <!-- Avro-generated code is exempt; we don't author it. -->
-                                        <exclude>io.conclave.events.fraud.*</exclude>
-                                        <exclude>io.conclave.events.security.*</exclude>
-                                    </excludes>
                                     <limits>
                                         <limit>
                                             <counter>LINE</counter>

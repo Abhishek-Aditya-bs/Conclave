@@ -1,0 +1,34 @@
+# M3 Baseline Service configuration.
+
+spring:
+  application:
+    name: conclave-baseline
+  datasource:
+    url: ${BASELINE_DB_URL:jdbc:postgresql://localhost:5432/conclave}
+    username: ${BASELINE_DB_USER:conclave}
+    password: ${BASELINE_DB_PASSWORD:conclave}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+server:
+  port: ${BASELINE_REST_PORT:8081}
+
+grpc:
+  server:
+    port: ${BASELINE_GRPC_PORT:9091}
+
+conclave:
+  baseline:
+    # EMA decay factor. New event weight = (1 - decay); existing baseline weight = decay.
+    # 0.9 means the past dominates; 0.5 means new and old are 50/50; 0.0 means use the
+    # latest event verbatim (no rolling). Tuned empirically against synthetic streams.
+    ema-decay: 0.85
+    # Embedding dimension. Must match the langchain4j model (MiniLM-L6-v2 = 384).
+    embedding-dim: 384
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
