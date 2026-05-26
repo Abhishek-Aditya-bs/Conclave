@@ -52,11 +52,11 @@ export default function App() {
 function Nav() {
   return (
     <nav className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
-        <a href="/" className="flex items-center gap-2 text-sm">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-3.5">
+        <a href="/" className="flex min-w-0 items-center gap-2 text-sm">
           <Logo />
           <span className="font-medium tracking-tight">CONCLAVE</span>
-          <Badge variant="outline" className="ml-1 text-[10px] uppercase">
+          <Badge variant="outline" className="ml-1 hidden text-[10px] uppercase sm:inline-flex">
             v0.1
           </Badge>
         </a>
@@ -67,16 +67,21 @@ function Nav() {
           <NavLink href="#quickstart">Quickstart</NavLink>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            aria-label="GitHub repository"
+          >
             <a href={REPO} target="_blank" rel="noopener">
               <Github />
-              GitHub
+              <span className="hidden sm:inline">GitHub</span>
             </a>
           </Button>
           <Button size="sm" asChild>
             <a href="#quickstart">
               Quickstart
-              <ArrowRight />
+              <ArrowRight className="hidden sm:inline" />
             </a>
           </Button>
         </div>
@@ -117,8 +122,8 @@ function Hero() {
       <div aria-hidden className="bg-grid bg-grid-fade absolute inset-0" />
       <div aria-hidden className="glow absolute inset-x-0 top-0 h-[600px]" />
 
-      <div className="relative mx-auto grid max-w-6xl gap-12 px-6 py-24 md:grid-cols-[1.1fr_0.9fr] md:py-32">
-        <div className="flex flex-col justify-center">
+      <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:gap-12 md:py-32">
+        <div className="flex min-w-0 flex-col justify-center">
           <Badge
             variant="outline"
             className="mb-6 w-fit gap-1.5 border-foreground/15 px-2 py-1 text-[10px] uppercase tracking-widest text-muted-foreground"
@@ -126,14 +131,14 @@ function Hero() {
             <Sparkles className="size-3" />
             multi-agent · real-time · explainable
           </Badge>
-          <h1 className="font-heading text-balance text-4xl leading-[1.05] tracking-tight md:text-6xl">
+          <h1 className="font-heading text-balance text-3xl leading-[1.05] tracking-tight sm:text-4xl md:text-6xl">
             Four agents deliberate
             <br />
             <span className="text-muted-foreground">on every event.</span>
           </h1>
           <p
             data-body="prose"
-            className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg"
+            className="mt-6 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg"
           >
             A feature extractor, a behavioural baseliner, a graph reasoner, and a
             judge — coordinated via LangGraph — read each enriched event and
@@ -171,7 +176,7 @@ function Hero() {
 
 function Terminal() {
   return (
-    <Card className="self-center bg-card/60 ring-foreground/10 backdrop-blur supports-[backdrop-filter]:bg-card/40">
+    <Card className="min-w-0 self-center bg-card/60 ring-foreground/10 backdrop-blur supports-[backdrop-filter]:bg-card/40">
       <CardHeader className="flex flex-row items-center justify-between border-b border-border/60 pb-3">
         <div className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full bg-foreground/15" />
@@ -182,16 +187,19 @@ function Terminal() {
           ~/conclave
         </span>
       </CardHeader>
-      <CardContent className="px-4 pb-4 font-mono text-[12.5px] leading-relaxed">
+      <CardContent className="min-w-0 px-4 pb-4 font-mono text-[11.5px] leading-relaxed sm:text-[12.5px]">
         <Line prompt prefix="$">make demo-fraud</Line>
         <Line muted>↳ mvn -DskipTests package … ✓</Line>
-        <Line muted>↳ docker compose up -d … ✓ kafka schema-registry postgres neo4j</Line>
+        <Line muted>↳ docker compose up -d … ✓ kafka · schema-registry · postgres · neo4j</Line>
         <Line muted>↳ agents · orchestrator · baseline · graph started</Line>
-        <Line muted>↳ generators: 200 clean · 2 card-testing rings · 1 ato · 1 bust-out</Line>
+        <Line muted>↳ generators: 200 clean · 2 rings · 1 ato · 1 bust-out</Line>
         <div className="my-2 h-px bg-border/60" />
-        <Line prompt prefix="$">curl /api/v1/decisions?domain=fraud&min_score=0.66</Line>
+        <Line prompt prefix="$">curl /api/v1/decisions?min_score=0.66</Line>
         <Line className="text-foreground">
-          {`{ "decision_id": "0193…", "verdict_label": `}
+          {`{ "decision_id": "0193…",`}
+        </Line>
+        <Line className="text-foreground">
+          {`  "verdict_label": `}
           <span className="rounded bg-destructive/10 px-1 py-0.5 text-destructive">
             "BLOCK"
           </span>
@@ -200,7 +208,7 @@ function Terminal() {
         <Line className="text-foreground">
           {`  "score": `}
           <span className="text-foreground">0.842</span>
-          {`, "latency_ms": 587, "judge_provider": "anthropic" }`}
+          {`, "latency_ms": 587 }`}
         </Line>
         <Line muted className="mt-1">
           <span className="inline-block size-1.5 animate-pulse rounded-full bg-foreground/70" />
@@ -226,12 +234,12 @@ function Line({
 }) {
   return (
     <div
-      className={`flex gap-2 ${muted ? "text-muted-foreground" : ""} ${className ?? ""}`}
+      className={`flex min-w-0 gap-2 ${muted ? "text-muted-foreground" : ""} ${className ?? ""}`}
     >
       {prompt ? (
-        <span className="select-none text-muted-foreground">{prefix ?? "$"}</span>
+        <span className="shrink-0 select-none text-muted-foreground">{prefix ?? "$"}</span>
       ) : null}
-      <span className="min-w-0 break-all">{children}</span>
+      <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{children}</span>
     </div>
   );
 }
@@ -247,13 +255,25 @@ function Stats() {
   ];
   return (
     <section className="border-b border-border/60 bg-background">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 divide-x divide-border/60 md:grid-cols-4">
-        {items.map((it) => (
-          <div key={it.label} className="px-6 py-8">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 md:grid-cols-4">
+        {items.map((it, i) => (
+          <div
+            key={it.label}
+            className={`px-4 py-6 sm:px-6 sm:py-8 ${
+              // Top row keeps no top border; bottom row gets one on mobile
+              i >= 2 ? "border-t border-border/60 md:border-t-0" : ""
+            } ${
+              // Vertical dividers between columns (skip first col)
+              i % 2 === 1 ? "border-l border-border/60" : ""
+            } ${
+              // On md+, every col except the first gets a left border
+              i > 0 ? "md:border-l md:border-border/60" : ""
+            }`}
+          >
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
               {it.label}
             </p>
-            <p className="mt-2 text-2xl tabular-nums tracking-tight text-foreground md:text-3xl">
+            <p className="mt-2 text-xl tabular-nums tracking-tight text-foreground sm:text-2xl md:text-3xl">
               {it.value}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{it.sub}</p>
@@ -296,7 +316,7 @@ function Architecture() {
 
   return (
     <section id="architecture" className="border-b border-border/60">
-      <div className="mx-auto max-w-6xl px-6 py-24">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 md:py-24">
         <SectionEyebrow tag="Architecture" />
         <SectionTitle>
           The deliberation is the contribution.
@@ -353,7 +373,7 @@ function Architecture() {
 function Configs() {
   return (
     <section id="configs" className="border-b border-border/60">
-      <div className="mx-auto max-w-6xl px-6 py-24">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 md:py-24">
         <SectionEyebrow tag="Two reference configurations" />
         <SectionTitle>
           One architecture.
@@ -367,7 +387,10 @@ function Configs() {
         </p>
 
         <div className="mt-10">
-          <Tabs defaultValue="fraud" className="gap-6">
+          {/* shadcn-nova's Tabs CVA checks for `data-horizontal` but radix sets
+              `data-orientation` — the flex-col class never applies, so we force
+              column layout here so TabsList sits above TabsContent. */}
+          <Tabs defaultValue="fraud" className="flex-col gap-6">
             <TabsList className="self-start">
               <TabsTrigger value="fraud">
                 <Layers />
@@ -446,13 +469,13 @@ function ConfigDetail({
           </ul>
         </CardContent>
       </Card>
-      <Card className="bg-card/60">
+      <Card className="min-w-0 bg-card/60">
         <CardHeader className="border-b border-border/60 pb-3">
           <CardTitle className="text-[11px] uppercase tracking-widest text-muted-foreground">
             ~/conclave
           </CardTitle>
         </CardHeader>
-        <CardContent className="font-mono text-[12.5px] leading-relaxed">
+        <CardContent className="min-w-0 font-mono text-[11.5px] leading-relaxed sm:text-[12.5px]">
           <Line prompt prefix="$">{cmd}</Line>
           <Line muted>↳ stack up. fires a starter event burst.</Line>
           <div className="my-2 h-px bg-border/60" />
@@ -509,7 +532,7 @@ function Benchmarks() {
 
   return (
     <section id="benchmarks" className="border-b border-border/60 bg-background">
-      <div className="mx-auto max-w-6xl px-6 py-24">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 md:py-24">
         <SectionEyebrow tag="Benchmarks" />
         <SectionTitle>
           Latency budgets met.
@@ -523,34 +546,39 @@ function Benchmarks() {
         </p>
 
         <div className="mt-10 overflow-hidden rounded-xl border border-border bg-card/40">
-          <Table>
+          <Table className="text-xs sm:text-sm">
             <TableHeader>
               <TableRow>
-                <TableHead>Component</TableHead>
-                <TableHead className="text-right">Budget</TableHead>
-                <TableHead className="text-right">Measured (p99)</TableHead>
-                <TableHead className="text-right">Headroom</TableHead>
-                <TableHead className="hidden md:table-cell">Notes</TableHead>
+                <TableHead className="whitespace-normal">Component</TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Budget</TableHead>
+                <TableHead className="text-right whitespace-normal">
+                  <span className="sm:hidden">p99</span>
+                  <span className="hidden sm:inline">Measured (p99)</span>
+                </TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Headroom</TableHead>
+                <TableHead className="hidden lg:table-cell">Notes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={r.component}>
-                  <TableCell className="font-medium">{r.component}</TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                  <TableCell className="font-medium whitespace-normal break-words">
+                    {r.component}
+                  </TableCell>
+                  <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
                     {r.budget}
                   </TableCell>
                   <TableCell
-                    className={`text-right tabular-nums ${
+                    className={`text-right tabular-nums whitespace-nowrap ${
                       r.pending ? "text-muted-foreground" : "text-foreground"
                     }`}
                   >
                     {r.p99}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                  <TableCell className="hidden text-right tabular-nums text-muted-foreground sm:table-cell">
                     {r.headroom}
                   </TableCell>
-                  <TableCell className="hidden text-xs text-muted-foreground md:table-cell">
+                  <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
                     {r.note}
                   </TableCell>
                 </TableRow>
@@ -568,7 +596,7 @@ function Benchmarks() {
 function Quickstart() {
   return (
     <section id="quickstart" className="border-b border-border/60">
-      <div className="mx-auto max-w-6xl px-6 py-24">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 md:py-24">
         <SectionEyebrow tag="Quickstart" />
         <SectionTitle>
           <span className="text-muted-foreground">git clone, then</span>
@@ -601,13 +629,13 @@ function Quickstart() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/60">
+          <Card className="min-w-0 bg-card/60">
             <CardHeader className="border-b border-border/60 pb-3">
               <CardTitle className="text-[11px] uppercase tracking-widest text-muted-foreground">
                 02 · commands
               </CardTitle>
             </CardHeader>
-            <CardContent className="font-mono text-[12.5px] leading-relaxed">
+            <CardContent className="min-w-0 font-mono text-[11.5px] leading-relaxed sm:text-[12.5px]">
               <Line muted># clone and configure</Line>
               <Line prompt prefix="$">git clone {REPO} && cd conclave</Line>
               <Line prompt prefix="$">cp .env.example .env</Line>
