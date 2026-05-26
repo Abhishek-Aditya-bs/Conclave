@@ -34,6 +34,47 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-26 — M7 (Audit & Decision API) gotchas
+
+1. **`@TestInstance(Lifecycle.PER_CLASS)` breaks Testcontainers/`@DynamicPropertySource`
+   ordering.** With PER_CLASS, JUnit makes `@BeforeAll` non-static, which shifts the
+   extension lifecycle so `@DynamicPropertySource` evaluates *before* the
+   `@Container` static field is started. Result:
+   `IllegalStateException: Mapped port can only be obtained after the container is started`
+   from `PostgreSQLContainer.getJdbcUrl()`. Fix: keep `@BeforeAll`/`@AfterAll` static
+   (default `Lifecycle.PER_METHOD`) — same pattern the M6 IT uses.
+2. **Spring Boot's Jackson does NOT snake_case by default.** Java records
+   serialize their field names verbatim, so `eventId` becomes `"eventId"` in
+   the JSON response. The M6 `DecisionPublisher` hand-builds snake_case
+   keys for the Kafka payload, but the M7 controller's record DTOs would
+   serialize as camelCase if you don't opt in globally. Set
+   `spring.jackson.property-naming-strategy=SNAKE_CASE` in `application.yaml`
+   to align both wire surfaces.
+3. **Hand-rolled WHERE assembly is fine at this scope.** Eight optional
+   predicates, one `appendWhere` method, list-based positional binding. The
+   abstraction cost of jOOQ or Specifications would outweigh the maintenance
+   savings until predicate count grows past ~12.
+4. **`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`** is the idempotent
+   roll-forward path for the demo (Postgres 9.6+). Avoid Flyway/Liquibase
+   until the migration set actually needs ordering — one column add per
+   module is cheap to apply on every startup.
+5. **`spring-boot-starter-web`'s `RestClient` is the modern replacement
+   for `TestRestTemplate`.** Used here in `AuditApiIT` with
+   `RestClient.builder().baseUrl("http://localhost:" + port)`. Throws
+   typed `HttpClientErrorException.NotFound` / `BadRequest` on 4xx by
+   default — assert on those instead of polling for status codes.
+6. **`@RequestParam` Optional<X> in Spring Boot 4** still works for the
+   typed primitive wrappers (`Double minScore`) but the controller-side
+   plumbing is cleaner if you accept the unboxed nullable type and let
+   the builder wrap it. That's what `AuditController` does.
+7. **springdoc-openapi 2.x targets Spring Boot 3.** No clean SB4 release
+   yet; the 3.x line is milestones-only. M7 ships without auto-generated
+   OpenAPI for now — the dashboard team works from ADR-006 + controller
+   javadoc.
+8. **Replay path piggybacks on the M6 `DeliberationClient` bean.** When
+   M5 is down, replay 503s the same way live deliberation does. That's
+   honest behavior but worth a "M5 unreachable" banner in the dashboard.
+
 ### 2026-05-26 — M6 (Decision Orchestrator) gotchas
 
 1. **Avro's built-in `JsonEncoder` wraps union types.** A union of

@@ -16,6 +16,7 @@ class DecisionRecordTest {
                 UUID.randomUUID(),
                 "evt-1",
                 "fraud",
+                "cardholder-9",
                 0.83,
                 "BLOCK",
                 "Block — ring detected.",
@@ -32,6 +33,7 @@ class DecisionRecordTest {
     void valid_decision_constructs() {
         DecisionRecord d = newValid();
         assertThat(d.eventId()).isEqualTo("evt-1");
+        assertThat(d.baselineEntityId()).isEqualTo("cardholder-9");
         assertThat(d.judgeModel()).isEqualTo("claude-haiku-4-5-20251001");
     }
 
@@ -40,7 +42,7 @@ class DecisionRecordTest {
         var original = new ArrayList<ContributingFactorRecord>();
         original.add(new ContributingFactorRecord("a", 0.1, "x"));
         DecisionRecord d = new DecisionRecord(
-                UUID.randomUUID(), "evt-1", "fraud", 0.5, "REVIEW", "Review.",
+                UUID.randomUUID(), "evt-1", "fraud", "c", 0.5, "REVIEW", "Review.",
                 original, 1L, "anthropic", "m", "{}", Instant.now());
 
         // Mutate the input list AFTER construction.
@@ -56,15 +58,24 @@ class DecisionRecordTest {
     @Test
     void blank_event_id_rejected() {
         assertThatThrownBy(() -> new DecisionRecord(
-                UUID.randomUUID(), "", "fraud", 0.5, "REVIEW", "x",
+                UUID.randomUUID(), "", "fraud", "c", 0.5, "REVIEW", "x",
                 List.of(), 1L, "p", "m", "{}", Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
+    void blank_baseline_entity_id_rejected() {
+        assertThatThrownBy(() -> new DecisionRecord(
+                UUID.randomUUID(), "e", "fraud", "  ", 0.5, "REVIEW", "x",
+                List.of(), 1L, "p", "m", "{}", Instant.now()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("baselineEntityId");
+    }
+
+    @Test
     void score_out_of_range_rejected() {
         assertThatThrownBy(() -> new DecisionRecord(
-                UUID.randomUUID(), "e", "fraud", 1.5, "REVIEW", "x",
+                UUID.randomUUID(), "e", "fraud", "c", 1.5, "REVIEW", "x",
                 List.of(), 1L, "p", "m", "{}", Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("[0, 1]");
@@ -73,7 +84,7 @@ class DecisionRecordTest {
     @Test
     void negative_latency_rejected() {
         assertThatThrownBy(() -> new DecisionRecord(
-                UUID.randomUUID(), "e", "fraud", 0.5, "REVIEW", "x",
+                UUID.randomUUID(), "e", "fraud", "c", 0.5, "REVIEW", "x",
                 List.of(), -1L, "p", "m", "{}", Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("latencyMs");
@@ -82,7 +93,7 @@ class DecisionRecordTest {
     @Test
     void null_decision_id_rejected() {
         assertThatThrownBy(() -> new DecisionRecord(
-                null, "e", "fraud", 0.5, "REVIEW", "x",
+                null, "e", "fraud", "c", 0.5, "REVIEW", "x",
                 List.of(), 1L, "p", "m", "{}", Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -90,7 +101,7 @@ class DecisionRecordTest {
     @Test
     void null_factors_rejected() {
         assertThatThrownBy(() -> new DecisionRecord(
-                UUID.randomUUID(), "e", "fraud", 0.5, "REVIEW", "x",
+                UUID.randomUUID(), "e", "fraud", "c", 0.5, "REVIEW", "x",
                 null, 1L, "p", "m", "{}", Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -98,7 +109,7 @@ class DecisionRecordTest {
     @Test
     void blank_domain_rejected() {
         assertThatThrownBy(() -> new DecisionRecord(
-                UUID.randomUUID(), "e", "  ", 0.5, "REVIEW", "x",
+                UUID.randomUUID(), "e", "  ", "c", 0.5, "REVIEW", "x",
                 List.of(), 1L, "p", "m", "{}", Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -106,7 +117,7 @@ class DecisionRecordTest {
     @Test
     void blank_verdict_label_rejected() {
         assertThatThrownBy(() -> new DecisionRecord(
-                UUID.randomUUID(), "e", "fraud", 0.5, "", "x",
+                UUID.randomUUID(), "e", "fraud", "c", 0.5, "", "x",
                 List.of(), 1L, "p", "m", "{}", Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class);
     }

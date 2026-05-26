@@ -55,6 +55,7 @@ public class SchemaInitializer {
                 decision_id            UUID PRIMARY KEY,
                 event_id               VARCHAR(128) NOT NULL,
                 domain                 VARCHAR(16)  NOT NULL,
+                baseline_entity_id     VARCHAR(128) NOT NULL,
                 score                  DOUBLE PRECISION NOT NULL,
                 verdict_label          VARCHAR(32)  NOT NULL,
                 verdict_explanation_md TEXT NOT NULL,
@@ -67,10 +68,19 @@ public class SchemaInitializer {
             )
             """;
 
+    // Idempotent migration step: tables created before M7 don't have
+    // baseline_entity_id. ADD COLUMN IF NOT EXISTS is Postgres 9.6+; we
+    // rely on it for the demo cluster's roll-forward and skip Flyway/Liquibase.
+    private static final String ENSURE_BASELINE_ENTITY_COLUMN = """
+            ALTER TABLE decisions
+                ADD COLUMN IF NOT EXISTS baseline_entity_id VARCHAR(128) NOT NULL DEFAULT ''
+            """;
+
     private static final String[] CREATE_INDEXES = {
-            "CREATE INDEX IF NOT EXISTS idx_decisions_event_id     ON decisions (event_id)",
-            "CREATE INDEX IF NOT EXISTS idx_decisions_domain_score ON decisions (domain, score DESC)",
-            "CREATE INDEX IF NOT EXISTS idx_decisions_created_at   ON decisions (created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_decisions_event_id          ON decisions (event_id)",
+            "CREATE INDEX IF NOT EXISTS idx_decisions_domain_score      ON decisions (domain, score DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_decisions_created_at        ON decisions (created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_decisions_baseline_entity   ON decisions (baseline_entity_id)",
     };
 
     private final JdbcTemplate jdbc;
@@ -83,6 +93,9 @@ public class SchemaInitializer {
     public void initialize() {
         LOG.info("Initializing decisions table schema");
         jdbc.execute(CREATE_TABLE);
+        // Roll-forward: pre-M7 tables don't carry baseline_entity_id; this
+        // ALTER is idempotent so a fresh table just no-ops.
+        jdbc.execute(ENSURE_BASELINE_ENTITY_COLUMN);
         for (String ddl : CREATE_INDEXES) {
             jdbc.execute(ddl);
         }

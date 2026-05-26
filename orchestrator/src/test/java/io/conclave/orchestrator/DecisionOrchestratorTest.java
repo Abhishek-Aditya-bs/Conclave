@@ -77,7 +77,7 @@ class DecisionOrchestratorTest {
 
     private DecisionRecord stubDecision(String eventId) {
         return new DecisionRecord(
-                UUID.randomUUID(), eventId, "fraud", 0.83, "BLOCK", "Block.",
+                UUID.randomUUID(), eventId, "fraud", "c", 0.83, "BLOCK", "Block.",
                 List.of(new ContributingFactorRecord("graph_ring_detected", 0.8, "ring")),
                 240L, "anthropic", "claude-haiku-4-5-20251001",
                 "{\"eventId\":\"" + eventId + "\"}", Instant.now());

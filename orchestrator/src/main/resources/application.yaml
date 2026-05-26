@@ -12,6 +12,11 @@ spring:
     name: conclave-orchestrator
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:fraud}
+  # M7 audit API serializes records in snake_case to match the decisions
+  # Kafka payload shape DecisionPublisher emits — keeps the dashboard's
+  # type definitions uniform across REST and the live event stream.
+  jackson:
+    property-naming-strategy: SNAKE_CASE
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     # Properties that apply to producer, consumer, AND streams clients.

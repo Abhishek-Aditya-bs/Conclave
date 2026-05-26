@@ -27,6 +27,11 @@ public record DecisionRecord(
         UUID decisionId,
         String eventId,
         String domain,
+        // Identifier the M3 baseline service was keyed on (cardholderId for
+        // fraud, principalId for security). Persisted as a first-class column
+        // so the M7 audit API can filter decisions by entity without parsing
+        // {@code enrichedEventJson} on every query.
+        String baselineEntityId,
         double score,
         String verdictLabel,
         String verdictExplanationMd,
@@ -46,6 +51,9 @@ public record DecisionRecord(
         }
         if (domain == null || domain.isBlank()) {
             throw new IllegalArgumentException("domain must not be blank");
+        }
+        if (baselineEntityId == null || baselineEntityId.isBlank()) {
+            throw new IllegalArgumentException("baselineEntityId must not be blank");
         }
         if (score < 0.0 || score > 1.0) {
             throw new IllegalArgumentException("score must be in [0, 1]; got " + score);

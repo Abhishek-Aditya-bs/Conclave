@@ -33,7 +33,7 @@ class JdbcDecisionRepositoryTest {
         UUID id = UUID.randomUUID();
         Instant now = Instant.parse("2026-05-26T01:00:00Z");
         DecisionRecord d = new DecisionRecord(
-                id, "evt-1", "fraud", 0.83, "BLOCK",
+                id, "evt-1", "fraud", "cardholder-9", 0.83, "BLOCK",
                 "Block — ring.",
                 List.of(
                         new ContributingFactorRecord("graph_ring_detected", 0.8, "Device touched 7"),
@@ -55,12 +55,13 @@ class JdbcDecisionRepositoryTest {
         assertThat(params[0]).isEqualTo(id);
         assertThat(params[1]).isEqualTo("evt-1");
         assertThat(params[2]).isEqualTo("fraud");
-        assertThat(params[3]).isEqualTo(0.83);
-        assertThat(params[4]).isEqualTo("BLOCK");
-        assertThat(params[5]).isEqualTo("Block — ring.");
+        assertThat(params[3]).isEqualTo("cardholder-9");
+        assertThat(params[4]).isEqualTo(0.83);
+        assertThat(params[5]).isEqualTo("BLOCK");
+        assertThat(params[6]).isEqualTo("Block — ring.");
 
-        // params[6] is the JSON-serialized contributing_factors list.
-        String factorsJson = (String) params[6];
+        // params[7] is the JSON-serialized contributing_factors list.
+        String factorsJson = (String) params[7];
         var root = new ObjectMapper().readTree(factorsJson);
         assertThat(root.isArray()).isTrue();
         assertThat(root).hasSize(2);
@@ -68,10 +69,10 @@ class JdbcDecisionRepositoryTest {
         assertThat(root.get(0).get("weight").asDouble()).isEqualTo(0.8);
         assertThat(root.get(0).get("evidence").asText()).isEqualTo("Device touched 7");
 
-        assertThat(params[7]).isEqualTo(240L);
-        assertThat(params[8]).isEqualTo("anthropic");
-        assertThat(params[9]).isEqualTo("claude-haiku-4-5-20251001");
-        assertThat(params[10]).isEqualTo("{\"eventId\":\"evt-1\"}");
-        assertThat(params[11]).isEqualTo(Timestamp.from(now));
+        assertThat(params[8]).isEqualTo(240L);
+        assertThat(params[9]).isEqualTo("anthropic");
+        assertThat(params[10]).isEqualTo("claude-haiku-4-5-20251001");
+        assertThat(params[11]).isEqualTo("{\"eventId\":\"evt-1\"}");
+        assertThat(params[12]).isEqualTo(Timestamp.from(now));
     }
 }

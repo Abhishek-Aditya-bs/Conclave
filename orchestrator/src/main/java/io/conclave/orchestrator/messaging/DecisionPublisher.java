@@ -51,6 +51,7 @@ public class DecisionPublisher {
         map.put("decision_id", decision.decisionId().toString());
         map.put("event_id", decision.eventId());
         map.put("domain", decision.domain());
+        map.put("baseline_entity_id", decision.baselineEntityId());
         map.put("score", decision.score());
         map.put("verdict_label", decision.verdictLabel());
         map.put("verdict_explanation_md", decision.verdictExplanationMd());

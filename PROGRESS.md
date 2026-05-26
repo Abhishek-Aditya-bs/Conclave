@@ -17,57 +17,69 @@
 | **M4 — Graph Reasoner Service** | ✅ done | New `graph/` Maven module. Neo4j 5 storage, 4 fixed Cypher templates (2 per domain), depth-bounded queries, REST + gRPC dual surface, **p99 query = 6ms** on ~100K-edge graph (8× under the 50ms budget). ADR-003 records the schema + template strategy |
 | **M5 — LangGraph Deliberation Orchestrator** | ✅ done | New `agents/` Python project (uv-managed). LangGraph state graph: feature → (baseliner ∥ graph_reasoner) → judge with graceful per-node degradation. `JUDGE_LLM_PROVIDER` factory routes between Claude Haiku 4.5 (Anthropic SDK, tool-use structured output) and Ollama (`langchain-ollama`, `format=json`). gRPC server on port 9093. **99 tests, 98% line coverage** (gate: 80%). ADR-004 records the provider-factory rationale |
 | **M6 — Decision Orchestrator** | ✅ done | New `io.conclave.orchestrator` package inside the existing `orchestrator/` module. @KafkaListener on `events.{domain}.enriched`, calls M5 over gRPC (grpc-netty-shaded), persists to Postgres (decisions JSONB schema), emits JSON on `decisions.{domain}`. DLQ to `decisions.{domain}.failed` with six stable failure-reason codes. Avro→clean-JSON encoder flattens unions for M5's enriched_event_json. **85 orchestrator tests** (71 unit + 14 IT), **90% line / 77% branch** coverage. ADR-005 records the schema + DLQ design |
-| **M7 — Audit & Decision API** | 🟡 not started | |
+| **M7 — Audit & Decision API** | ✅ done | New `io.conclave.audit` package inside `orchestrator/`. Three endpoints: `GET /api/v1/decisions` (paginated list with 8 filter params), `GET /api/v1/decisions/{id}` (detail), `POST /api/v1/decisions/{id}/replay` (re-runs M5 on stored evidence, no persist). Read-side `DecisionAuditRepository` separate from M6's writer; dynamic SQL WHERE builder. Stable error codes (`decision_not_found`, `invalid_argument`). Wire format snake_case throughout — matches the M6 `decisions.{domain}` payload so the dashboard owns one type def. Added `baseline_entity_id` column to decisions table (with idempotent ALTER for roll-forward). ADR-006 records the API surface + read/write split rationale |
 | **M8 — Reference Configurations** | 🟡 partial | fraud + security raw/enriched schemas + feature specs exist; graph templates deferred to M4 |
 | **M9 — Synthetic Data Generators** | 🟡 not started | |
 | **M10 — Dashboard + Demo Harness** | 🟡 not started | |
 
-**Last green build:** Session 6 (see history below) — **155/155 Java tests + 99/99 Python tests passing across 5 modules** (orchestrator: 85 [34 pre-M6 + 51 M6], baseline: 40, graph: 30, agents: 99). Coverage: orchestrator 90%/77% (post-M6), baseline 99%/92%, graph 94%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
+**Last green build:** Session 7 (see history below) — **181/181 Java tests + 99/99 Python tests passing across 5 modules** (orchestrator: 111 [34 pre-M6 + 51 M6 + 26 M7], baseline: 40, graph: 30, agents: 99). Coverage: orchestrator 91%/75% (post-M7), baseline 99%/92%, graph 94%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
 **Coverage threshold enforced:** 80% line, 70% branch (JaCoCo); 80% line (pytest-cov).
 
 ---
 
 ## ▶️ Next Actions (top of the queue for the next agent)
 
-1. **Start M7 — Audit & Decision API.** REST endpoints for browsing decisions,
-   filtering by domain/score/time, plus a `replay` endpoint that re-runs the
-   deliberation on a stored event. Lives in `orchestrator/` under a new
-   `io.conclave.audit` package.
-   - **The decisions table is in place** with all the columns the API needs:
-     `decision_id`, `event_id`, `domain`, `score`, `verdict_label`,
-     `verdict_explanation_md`, `contributing_factors` (JSONB), `latency_ms`,
-     `judge_provider`, `judge_model`, `enriched_event_json`, `created_at`.
-   - **Replay endpoint:** read the `enriched_event_json` from the row, build a
-     fresh `DeliberationRequest`, call M5, return the new Decision (without
-     persisting — the original audit row stays untouched).
-   - The pre-built [DeliberationClient](orchestrator/src/main/java/io/conclave/orchestrator/client/DeliberationClient.java)
-     is the right entry point for replay calls.
-   - Expose OpenAPI / Swagger for the dashboard team.
-2. **Then M9 — Synthetic Data Generators.** Two Java CLIs that publish to
-   `events.{domain}.raw`. See spec §6 M9 for the adversarial pattern catalog.
+1. **Start M9 — Synthetic Data Generators.** Two Java CLIs that publish to
+   `events.{domain}.raw`. See spec §6 M9 for the adversarial pattern catalog:
+   - **Fraud generator** — clean txns + card-testing rings + ATO patterns + bust-out fraud.
+   - **Security generator** — clean auth + lateral movement + exfiltration + ATO.
+   - Generators produce labeled streams (ground-truth tags) so the eval pipeline
+     can compute AUC + precision@FPR=1%.
+   - Mirror the existing producer SDK in `io.conclave.ingest` — keep
+     `KafkaEventProducer` as the publish path so M1's idempotent + acks=all
+     settings flow through.
+   - New `generators/` directory at repo root (matches spec §10). Could be a
+     Maven module (`generators/pom.xml`) or just a `main` class in `orchestrator/`
+     — judgment call when wiring it up.
+2. **Then M8 — Reference Configurations.** Already partial (fraud + security
+   raw/enriched schemas + feature specs + graph templates exist). What's left:
+   the `make demo-fraud` and `make demo-security` switching story, plus a
+   `docker-compose.yml` that boots Kafka + Postgres + Neo4j + the four Java
+   services + M5 (anthropic backend) for a complete demo.
 3. **Then M10 — Audit Dashboard + Demo Harness.** Vite + React + shadcn/ui on
-   Cloudflare Pages; consumes the M7 REST API.
+   Cloudflare Pages; consumes the M7 REST API on `localhost:8080/api/v1/`.
+   - The dashboard can drop the M7 OpenAPI generation gap by reading
+     `docs/adr/0006-audit-api-surface.md` + the controller javadoc.
 4. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
 5. Add ADRs under `docs/adr/` for each new abstraction.
 
-**The end-to-end pipeline now runs.** A raw event published to
+**The full data plane runs end-to-end.** A raw event published to
 `events.{domain}.raw` flows through M2 (Kafka Streams) → emits on
 `events.{domain}.enriched` → M6 consumes → calls M5 over gRPC →
 persists to Postgres → emits on `decisions.{domain}` (or `.failed`
-on DLQ).
+on DLQ). M7 exposes the audit + replay surface on top of that.
 
-**Heads up for M7:**
-- The `decisions` table has indexes on `(event_id)`, `(domain, score DESC)`,
-  and `(created_at DESC)`. Most expected audit queries are covered.
-  `contributing_factors` is JSONB — use `jsonb_path_ops` GIN if you need
-  to filter by factor name at scale.
-- The `enriched_event_json` column carries the verbatim M5 input — the
-  replay endpoint should never have to walk back to Kafka.
-- Filter audit/benchmark queries by `judge_provider = 'anthropic'` for
-  any number that gets published (spec §5 caveat: Haiku-only).
-- The M6 slice is gated behind `conclave.orchestrator.enabled` (default
-  true). M7 should NOT need its own gate — it's a read-only API and can
-  coexist with the orchestrator under the same flag.
+**Heads up for M9:**
+- The producer SDK already exists ([KafkaEventProducer](orchestrator/src/main/java/io/conclave/ingest/KafkaEventProducer.java))
+  with idempotent + acks=all baked in. M9's generators should consume it as a
+  library, not re-implement.
+- Spec §13 lists ground-truth datasets (IEEE-CIS Fraud, BETH security) for
+  benchmark *comparison*. M9's synthetic streams are the demo data; the eval
+  pipeline (later) blends the two.
+- Labels go in a side topic, not on the raw event — the orchestrator must NOT
+  see the ground-truth label.
+
+**Heads up for M10:**
+- API base URL: `http://localhost:8080/api/v1/decisions`.
+- All field names snake_case in both the REST responses AND the
+  `decisions.{domain}` Kafka payload. One type definition suffices.
+- Replay endpoint: `POST /api/v1/decisions/{id}/replay` — returns a NEW
+  `DecisionDetail` with a fresh `decision_id`. Original row unchanged.
+- 404 body: `{"code":"decision_not_found","message":"..."}`. 400 body:
+  `{"code":"invalid_argument","message":"..."}`.
+- Filter params: `domain`, `verdict_label`, `baseline_entity_id`, `min_score`,
+  `max_score`, `since`, `until`, `judge_provider`, `limit`, `offset`.
+  Times accept epoch millis OR ISO-8601. Score bounds in [0, 1].
 
 ---
 
@@ -121,7 +133,8 @@ CONCLAVE/
 │       ├── 0002-baseline-storage-and-embedding.md     # M3 ✅
 │       ├── 0003-graph-templates-and-schema.md         # M4 ✅
 │       ├── 0004-judge-llm-provider-factory.md         # M5 ✅
-│       └── 0005-decision-persistence-and-dlq.md       # M6 ✅
+│       ├── 0005-decision-persistence-and-dlq.md       # M6 ✅
+│       └── 0006-audit-api-surface.md                  # M7 ✅
 ├── orchestrator/                    # Java/Spring service (M1, M2, M6, M7)
 │   ├── pom.xml
 │   └── src/
@@ -130,20 +143,31 @@ CONCLAVE/
 │       │   ├── java/io/conclave/
 │       │   │   ├── ingest/                # M1 ✅
 │       │   │   ├── stream/                # M2 ✅
-│       │   │   └── orchestrator/          # M6 ✅
-│       │   │       ├── DecisionConsumer.java      # @KafkaListener on events.{domain}.enriched
-│       │   │       ├── DecisionOrchestrator.java  # workflow: M5 → DB → decisions.{domain}
-│       │   │       ├── client/                    # DeliberationClient + ManagedChannel config
-│       │   │       ├── config/                    # DecisionOrchestratorProperties
-│       │   │       ├── domain/                    # DecisionRecord, ContributingFactorRecord
-│       │   │       ├── encode/                    # Avro → JSON + DeliberationRequestTranslator
-│       │   │       ├── messaging/                 # DecisionPublisher, DlqPublisher, topic config
-│       │   │       └── storage/                   # JdbcDecisionRepository, SchemaInitializer
-│       │   └── resources/application.yaml         # Kafka consumer (Avro), Postgres, orchestrator config
+│       │   │   ├── orchestrator/          # M6 ✅
+│       │   │   │   ├── DecisionConsumer.java      # @KafkaListener on events.{domain}.enriched
+│       │   │   │   ├── DecisionOrchestrator.java  # workflow: M5 → DB → decisions.{domain}
+│       │   │   │   ├── client/                    # DeliberationClient + ManagedChannel config
+│       │   │   │   ├── config/                    # DecisionOrchestratorProperties
+│       │   │   │   ├── domain/                    # DecisionRecord, ContributingFactorRecord
+│       │   │   │   ├── encode/                    # Avro → JSON + DeliberationRequestTranslator
+│       │   │   │   ├── messaging/                 # DecisionPublisher, DlqPublisher, topic config
+│       │   │   │   └── storage/                   # JdbcDecisionRepository, SchemaInitializer
+│       │   │   └── audit/                 # M7 ✅
+│       │   │       ├── AuditController.java       # REST endpoints @ /api/v1/decisions
+│       │   │       ├── AuditService.java          # list/detail/replay logic
+│       │   │       ├── DecisionFilter.java        # query-param record + builder
+│       │   │       ├── DecisionSummary.java       # list-view DTO
+│       │   │       ├── DecisionDetail.java        # full-row DTO
+│       │   │       ├── DecisionPage.java          # paginated response envelope
+│       │   │       ├── DecisionAuditRepository.java     # read interface
+│       │   │       ├── JdbcDecisionAuditRepository.java # JDBC + dynamic WHERE
+│       │   │       └── DecisionNotFoundException.java
+│       │   └── resources/application.yaml         # Kafka consumer (Avro), Postgres, snake_case JSON
 │       └── test/java/io/conclave/
 │           ├── ingest/                # M1 ✅
 │           ├── stream/                # M2 ✅
-│           └── orchestrator/          # M6 ✅  (51 tests: 49 unit + 2 IT)
+│           ├── orchestrator/          # M6 ✅  (51 tests: 49 unit + 2 IT)
+│           └── audit/                 # M7 ✅  (25 tests: 18 unit + 7 IT)
 ├── baseline/                        # M3 ✅  (Postgres + pgvector, MiniLM in-JVM, REST + gRPC)
 │   ├── pom.xml
 │   └── src/
@@ -681,3 +705,102 @@ audit API needs; the replay endpoint can use the existing DeliberationClient
 bean. The orchestrator module's `io.conclave.audit` package is the new home.
 M6 stays gated behind `conclave.orchestrator.enabled`; M7 can ride the same
 flag (or get its own — judgment call when the structure is clearer).
+
+### Session 7 — 2026-05-26 — M7 landed (Audit & Decision API)
+**Agent:** Claude Opus 4.7
+**Started from:** Session 6's commit `d2596cf`.
+
+**Delivered:**
+- Added `baseline_entity_id` as a first-class column on the decisions table
+  (idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` migration in
+  [SchemaInitializer](orchestrator/src/main/java/io/conclave/orchestrator/storage/SchemaInitializer.java)
+  for roll-forward). Threaded through
+  [DecisionRecord](orchestrator/src/main/java/io/conclave/orchestrator/domain/DecisionRecord.java),
+  [DeliberationClient](orchestrator/src/main/java/io/conclave/orchestrator/client/DeliberationClient.java)
+  (stamped from the proto request), and
+  [DecisionPublisher](orchestrator/src/main/java/io/conclave/orchestrator/messaging/DecisionPublisher.java)
+  (surfaced as `baseline_entity_id` in the Kafka JSON payload). New index
+  `idx_decisions_baseline_entity` for the entity-filter query.
+- New `io.conclave.audit` package
+  ([orchestrator/src/main/java/io/conclave/audit/](orchestrator/src/main/java/io/conclave/audit/)):
+  - [DecisionFilter](orchestrator/src/main/java/io/conclave/audit/DecisionFilter.java)
+    — `Optional<…>`-heavy record + fluent builder, validates score bounds /
+    limit / offset in its compact constructor.
+  - [DecisionSummary](orchestrator/src/main/java/io/conclave/audit/DecisionSummary.java)
+    (list-view DTO; excludes the heavy `verdictExplanationMd` /
+    `contributingFactors` / `enrichedEventJson`),
+    [DecisionDetail](orchestrator/src/main/java/io/conclave/audit/DecisionDetail.java)
+    (full row), [DecisionPage](orchestrator/src/main/java/io/conclave/audit/DecisionPage.java)
+    (paginated envelope with `total` for "page N of M").
+  - [DecisionAuditRepository](orchestrator/src/main/java/io/conclave/audit/DecisionAuditRepository.java)
+    + [JdbcDecisionAuditRepository](orchestrator/src/main/java/io/conclave/audit/JdbcDecisionAuditRepository.java)
+    — read-side, parallel to M6's writer. Hand-rolled dynamic SQL WHERE
+    builder, two RowMappers (summary skips JSONB parsing, detail
+    reconstructs the full `DecisionRecord`).
+  - [AuditService](orchestrator/src/main/java/io/conclave/audit/AuditService.java)
+    — list/detail/replay. Replay parses `graphEntityIds` from the stored
+    enriched event JSON, rebuilds a `DeliberationRequest`, calls the M6
+    `DeliberationClient` bean, returns the fresh `Decision` WITHOUT
+    persisting (audit history stays immutable).
+  - [AuditController](orchestrator/src/main/java/io/conclave/audit/AuditController.java)
+    — REST surface at `/api/v1/decisions`. Eight query-param filters,
+    ISO-8601 OR epoch-millis time parsing, stable error codes
+    (`decision_not_found`/404, `invalid_argument`/400).
+- Global Jackson `property-naming-strategy=SNAKE_CASE` so REST responses
+  match the snake_case Kafka payload M6 already emits — the dashboard
+  owns one type definition for "Decision".
+- ADR-006 ([docs/adr/0006-audit-api-surface.md](docs/adr/0006-audit-api-surface.md))
+  records the read/write repository split, replay semantics, hand-rolled
+  SQL choice, snake_case decision, and the springdoc-openapi gap (SB4
+  release is milestone-only; deferred).
+
+**Tests — 26 new M7 tests, all green** (orchestrator total: 111 = 90 unit + 21 IT):
+  - **Unit (18)**: `DecisionFilterTest` (8 — defaults, builder, validation
+    matrix including min>max), `AuditServiceTest` (8 — happy paths for
+    list/detail/replay, 404 paths, replay tolerates missing /
+    malformed `graphEntityIds`), `AuditControllerErrorHandlersTest`
+    (2 — 404 + 400 response shape with stable codes).
+  - **Integration (7)**: `AuditApiIT` boots the full Spring context under
+    fraud profile against Testcontainers Kafka + Postgres + a Netty
+    mock M5; seeds rows via the M6 `DecisionRepository` writer; hits the
+    REST API via Spring `RestClient` on `@LocalServerPort`. Covers:
+    list filtering by domain + score, pagination by entity, detail
+    payload shape, 404 on unknown id, replay returns fresh decision
+    without persisting (asserts the original row is untouched), replay
+    404, list 400 on invalid score bound.
+- **Coverage: 91% line / 75% branch** on the orchestrator module
+  (post-M7, gate: 80%/70%). M7 added 1135 statements; line coverage
+  ticked up and branch ticked down slightly.
+
+**Build settings changed:**
+- `spring.jackson.property-naming-strategy: SNAKE_CASE` in
+  [application.yaml](orchestrator/src/main/resources/application.yaml).
+  Aligns the REST DTOs' wire format with the M6 Kafka payload's
+  hand-built keys; the dashboard reads one type def.
+- All new M7 components carry the same
+  `@ConditionalOnProperty("conclave.orchestrator.enabled", matchIfMissing=true)`
+  gate as M6 — so M1/M2 ITs that disable the M6 slice also skip M7
+  cleanly. ADR-006 notes a future split could justify a separate
+  `conclave.audit.enabled` flag.
+
+**New gotchas surfaced in [SCRATCHPAD.md](SCRATCHPAD.md):**
+- `@TestInstance(Lifecycle.PER_CLASS)` reorders the Testcontainers
+  extension vs `@DynamicPropertySource` — keep `@BeforeAll`/`@AfterAll`
+  static so the containers start before Spring property resolution.
+- Spring Boot's Jackson default does NOT snake_case Java records.
+  `spring.jackson.property-naming-strategy=SNAKE_CASE` aligns the
+  REST DTOs with M6's hand-built Kafka payload shape.
+- `RestClient` (the Spring 6.x replacement for `TestRestTemplate`)
+  throws typed `HttpClientErrorException.NotFound` / `BadRequest`
+  on 4xx by default; assert on those instead of polling status codes.
+- springdoc-openapi 2.x targets Spring Boot 3.x only; 3.x line is
+  milestone-only. M7 ships without auto-generated OpenAPI; the
+  dashboard team uses ADR-006 + controller javadoc as the contract.
+
+**Handoff for Session 8:** Start at M9 (Synthetic Data Generators) — see
+"Next Actions" above. M8 is partially done already (schemas + feature
+specs + graph templates); finish it together with M9 if it makes the
+docker-compose harness easier. M10 (dashboard) consumes the M7 REST API
++ the `decisions.{domain}` Kafka topic; ADR-006 + this PROGRESS entry +
+[application.yaml](orchestrator/src/main/resources/application.yaml) are
+the contract.

@@ -37,11 +37,12 @@ public class JdbcDecisionRepository implements DecisionRepository {
     // Column order must match the parameter order in JdbcTemplate.update(...) below.
     private static final String INSERT = """
             INSERT INTO decisions (
-                decision_id, event_id, domain, score, verdict_label,
-                verdict_explanation_md, contributing_factors, latency_ms,
-                judge_provider, judge_model, enriched_event_json, created_at
+                decision_id, event_id, domain, baseline_entity_id, score,
+                verdict_label, verdict_explanation_md, contributing_factors,
+                latency_ms, judge_provider, judge_model, enriched_event_json,
+                created_at
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?, ?
             )
             """;
 
@@ -60,6 +61,7 @@ public class JdbcDecisionRepository implements DecisionRepository {
                 decision.decisionId(),
                 decision.eventId(),
                 decision.domain(),
+                decision.baselineEntityId(),
                 decision.score(),
                 decision.verdictLabel(),
                 decision.verdictExplanationMd(),

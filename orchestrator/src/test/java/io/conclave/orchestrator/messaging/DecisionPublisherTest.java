@@ -32,7 +32,7 @@ class DecisionPublisherTest {
         UUID id = UUID.randomUUID();
         Instant now = Instant.parse("2026-05-26T01:00:00Z");
         DecisionRecord d = new DecisionRecord(
-                id, "evt-1", "fraud", 0.83, "BLOCK", "Block.",
+                id, "evt-1", "fraud", "cardholder-9", 0.83, "BLOCK", "Block.",
                 List.of(new ContributingFactorRecord("graph_ring_detected", 0.8, "ring")),
                 240L, "anthropic", "claude-haiku-4-5-20251001",
                 "{}", now);
@@ -53,6 +53,7 @@ class DecisionPublisherTest {
         JsonNode payload = new ObjectMapper().readTree(payloadCap.getValue());
         assertThat(payload.get("decision_id").asText()).isEqualTo(id.toString());
         assertThat(payload.get("event_id").asText()).isEqualTo("evt-1");
+        assertThat(payload.get("baseline_entity_id").asText()).isEqualTo("cardholder-9");
         assertThat(payload.get("verdict_label").asText()).isEqualTo("BLOCK");
         assertThat(payload.get("score").asDouble()).isEqualTo(0.83);
         assertThat(payload.get("contributing_factors").isArray()).isTrue();
@@ -70,7 +71,7 @@ class DecisionPublisherTest {
         IngestProperties props = new IngestProperties(EventDomain.SECURITY, 3, (short) 1);
         DecisionPublisher publisher = new DecisionPublisher(kafkaTemplate, props);
         DecisionRecord d = new DecisionRecord(
-                UUID.randomUUID(), "evt", "security", 0.1, "ALLOW", "ok",
+                UUID.randomUUID(), "evt", "security", "alice@corp", 0.1, "ALLOW", "ok",
                 List.of(new ContributingFactorRecord("no_anomaly_observed", 0.0, "fine")),
                 10L, "ollama", "qwen3:8b", "{}", Instant.now());
 

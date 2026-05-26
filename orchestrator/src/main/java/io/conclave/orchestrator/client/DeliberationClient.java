@@ -78,6 +78,7 @@ public class DeliberationClient {
                 UUID.randomUUID(),
                 request.getEventId(),
                 request.getDomain(),
+                request.getBaselineEntityId(),
                 proto.getScore(),
                 proto.getVerdictLabel(),
                 proto.getVerdictExplanationMd(),
