@@ -185,3 +185,20 @@ website-dev: website-install ## Run the marketing site dev server on :5174.
 
 website-build: website-install ## Build the marketing site for production.
 	cd website && npm run build
+
+# ---- Cloudflare Pages deploy (marketing website) ----
+#
+# One-time setup (already done for the production project `conclave`):
+#   npx wrangler login                              # OAuth in browser
+#   npx wrangler pages project create conclave \
+#     --production-branch main
+#
+# Then `make website-deploy` does build + upload. Production URL:
+# https://conclave-4q9.pages.dev (the trailing slug was assigned by
+# Cloudflare because the bare "conclave" project name was already taken).
+.PHONY: website-deploy
+website-deploy: website-build ## Deploy the marketing site to Cloudflare Pages (needs `wrangler login`).
+	npx wrangler pages deploy website/dist \
+	  --project-name conclave \
+	  --branch main \
+	  --commit-dirty=true

@@ -68,6 +68,9 @@ dist/
 .env.local
 .env.*.local
 
+# ---------- Cloudflare Wrangler ----------
+.wrangler/
+
 # ---------- Docker / data ----------
 docker-data/
 **/postgres-data/

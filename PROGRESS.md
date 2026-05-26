@@ -43,9 +43,12 @@ All ten implementable modules are green. What's left to declare the project
    decision → graph view. Then `make demo-stop && make demo-security`
    + lateral-movement scenario. Once the GIFs land, drop them into
    README.md (and link from website/src/App.tsx Hero section).
-3. **Deploy `website/` to Cloudflare Pages.** `make website-build`
-   produces a static `website/dist/` directory; point a Pages project
-   at it.
+3. ~~**Deploy `website/` to Cloudflare Pages.**~~ ✅ Live at
+   [conclave-4q9.pages.dev](https://conclave-4q9.pages.dev) (Session 11).
+   Redeploy on any change: `make website-deploy` (needs a one-time
+   `npx wrangler login`). The Pages project name is `conclave`; the
+   `-4q9` slug was assigned by Cloudflare because the bare project
+   name was taken.
 4. **Run the benchmark + write the arXiv paper** (spec §9). The eval
    pipeline reads `decisions.{domain}` ⋈ `events.{domain}.labels` on
    `event_id`. M9's labeled streams + IEEE-CIS Fraud + BETH security
@@ -1129,3 +1132,56 @@ GIFs + Loom, deploy `website/` to Cloudflare Pages, run the
 benchmark + write the arXiv paper, draft the resume bullet. The
 `benchmark/` directory in spec §10 is still empty — that's the
 next code-track if/when eval becomes a priority.
+
+### Session 11 — 2026-05-26 — Website deployed to Cloudflare Pages
+**Agent:** Claude Opus 4.7
+**Started from:** Session 10's commit `8881c43`.
+
+**Delivered:**
+- Created the `conclave` Cloudflare Pages project under
+  `abhishek.aditya10@gmail.com`'s account
+  (id `09314cd488455337606fa018fb59f306`), production branch = `main`.
+  The bare `conclave` name on `*.pages.dev` was taken, so Cloudflare
+  appended a 3-character slug — the production URL is
+  **https://conclave-4q9.pages.dev**. Per-deployment preview URLs
+  follow `https://<commit-sha-prefix>.conclave-4q9.pages.dev`.
+- Uploaded the initial deployment via
+  `npx wrangler pages deploy website/dist --project-name conclave --branch main`.
+  Upload: 30 files in 1.74s, deploy: a few seconds. Preview URL of the
+  first deploy: https://da31bf23.conclave-4q9.pages.dev.
+- Added `make website-deploy` (in [Makefile](Makefile)) that chains
+  `website-build` then the wrangler upload. One-time setup
+  (`wrangler login` + `wrangler pages project create`) is documented
+  inline above the target.
+- Updated [README.md](README.md) acceptance criteria — "Marketing
+  website live" flips from ⏳ to ✅ with the live URL.
+
+**Out of scope, deliberately:**
+- The dashboard is NOT deployed to Pages. It expects `/api` to point
+  at a running orchestrator, which is not publicly hosted. Hosting
+  the dashboard publicly would require either (a) tunneling the local
+  orchestrator (cloudflared / ngrok) or (b) standing up the Java
+  backend on a public host. Both belong in a later "production
+  hosting" pass, not in M10.
+- Custom domain. The `.pages.dev` URL is sufficient for the spec's
+  "marketing website live" criterion; a custom domain (e.g.
+  `conclave.dev` if available) can be added later via
+  `wrangler pages domain add`.
+
+**Build/check status:**
+- `make website-build` → ✓ Vite 6, 955 ms, 65 KB gzipped JS / 18 KB CSS.
+- `make website-deploy` → ✓ deployment complete, public URL responding.
+
+**No code touched on the backend.** All ten module-level builds
+remain green at 219 Java + 99 Python tests.
+
+**Handoff for Session 12 (or the human):** The remaining items in
+Next Actions are still content/research:
+- End-to-end smoke-test of `make demo-fraud` on a fresh machine.
+- Record demo GIFs + Loom video.
+- Benchmark + arXiv paper.
+- Resume bullet.
+
+The implementation surface is now complete: 10 modules + compose
+harness + dashboard + live marketing site. Future code work is in
+`benchmark/` (eval pipeline; spec §10 reserves the directory).

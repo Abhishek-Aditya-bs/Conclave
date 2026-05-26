@@ -98,7 +98,7 @@ both frontend bundles build clean. See PROGRESS.md for per-module coverage.
 | DESIGN.md with at least 4 ADRs | ✅ (9 ADRs) |
 | README GIFs (fraud + security demos) | ⏳ pending demo recording |
 | arXiv preprint | ⏳ post-eval |
-| Marketing website live | ⏳ pending Cloudflare Pages deploy (`website/` is built and ready) |
+| Marketing website live | ✅ [conclave-4q9.pages.dev](https://conclave-4q9.pages.dev) — Cloudflare Pages; redeploy via `make website-deploy` |
 | 5-7 min Loom video | ⏳ pending demo recording |
 | Resume bullet | ⏳ |
 
