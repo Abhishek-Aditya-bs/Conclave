@@ -164,3 +164,24 @@ demo-status: ## Show stack status + decision counts.
 	@curl -fsS "http://localhost:8080/api/v1/decisions?limit=10" 2>/dev/null \
 	  | python3 -m json.tool 2>/dev/null \
 	  || echo "  (orchestrator REST not reachable; is the stack up?)"
+
+# ---- M10 (dashboard + marketing website) ----
+.PHONY: dashboard-install dashboard-dev dashboard-build website-install website-dev website-build
+
+dashboard-install: ## Install dashboard npm deps.
+	cd dashboard && npm install --no-audit --no-fund
+
+dashboard-dev: dashboard-install ## Run the dashboard dev server (proxies /api → orchestrator).
+	cd dashboard && npm run dev
+
+dashboard-build: dashboard-install ## Build the dashboard for production (Cloudflare Pages).
+	cd dashboard && npm run build
+
+website-install: ## Install marketing-site npm deps.
+	cd website && npm install --no-audit --no-fund
+
+website-dev: website-install ## Run the marketing site dev server on :5174.
+	cd website && npm run dev
+
+website-build: website-install ## Build the marketing site for production.
+	cd website && npm run build

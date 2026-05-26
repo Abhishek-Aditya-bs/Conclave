@@ -34,6 +34,34 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-26 — M10 (Dashboard + marketing site) gotchas
+
+1. **Tailwind v4 is CSS-first.** No `tailwind.config.ts`, no PostCSS
+   config. `@import "tailwindcss"` + `@theme { --color-bg: #09090b }`
+   inside `src/index.css` is the whole config surface. The
+   `@tailwindcss/vite` plugin handles compilation.
+2. **`import.meta.env` needs the `vite/client` types reference** in
+   `tsconfig.app.json` (`"types": ["vite/client"]`). Without it, TS
+   strict mode fails the build at `VITE_API_BASE_URL` lookup.
+3. **`node:path` in `vite.config.ts` needs `@types/node` + node types
+   in `tsconfig.node.json`.** Two separate tsconfigs because the Vite
+   config file runs under Node, while `src/` runs in the browser.
+4. **shadcn CLI primitives bring Radix.** Inlining the few primitives
+   we need (Button, Card, Field) is ~80 lines and avoids Radix's
+   ~40 KB of unused surface. Worth it for an audit UI.
+5. **TanStack Query polling pattern.** Set `refetchInterval` on the
+   `QueryClient`'s default options (one place, applies everywhere)
+   and override on the detail-view query with `refetchInterval: false`.
+   No per-query opt-in plumbing.
+6. **No `react-markdown` for the judge verdict.** ~30 KB gzipped for
+   `**bold**` + bullet lists + inline `code`. Hand-rolled inline
+   markdown parser in `VerdictMarkdown.tsx` (~60 lines, never injects
+   raw HTML). If the verdict markup grows tables/links, swap in.
+7. **Recharts dominates the bundle.** ~150 KB of the 720 KB JS.
+   Route-level code splitting would trim it but the dashboard is
+   single-page anyway — deferred until the bundle warning becomes a
+   real issue.
+
 ### 2026-05-26 — M8 (Compose demo harness) gotchas
 
 1. **KRaft Kafka needs a pinned CLUSTER_ID.** Without it, recreating

@@ -62,6 +62,8 @@ dist/
 .next/
 .turbo/
 .vite/
+# TypeScript incremental build cache
+*.tsbuildinfo
 *.log
 .env.local
 .env.*.local

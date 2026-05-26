@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* Geist Sans for UI, JetBrains Mono for code/tabular data. Both bundled
+   via Fontsource so the dashboard works offline. */
+@import "@fontsource/geist-sans/400.css";
+@import "@fontsource/geist-sans/500.css";
+@import "@fontsource/geist-sans/600.css";
+@import "@fontsource/geist-sans/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+/* shadcn `zinc` palette (Vercel-inspired neutral). Dark mode default. */
+@theme {
+  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-bg: #09090b;
+  --color-bg-soft: #18181b;
+  --color-bg-card: #0a0a0a;
+  --color-fg: #fafafa;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+  --color-border: #27272a;
+  --color-border-strong: #3f3f46;
+
+  --color-accent: #fafafa;
+
+  /* Risk-score gradient stops — single accent color reserved per spec §8. */
+  --color-risk-low: #22c55e;
+  --color-risk-med: #eab308;
+  --color-risk-high: #ef4444;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+}
+
+/* Subtle scrollbar in monospace panels */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fg-subtle);
+}

@@ -20,39 +20,47 @@
 | **M7 — Audit & Decision API** | ✅ done | New `io.conclave.audit` package inside `orchestrator/`. Three endpoints: `GET /api/v1/decisions` (paginated list with 8 filter params), `GET /api/v1/decisions/{id}` (detail), `POST /api/v1/decisions/{id}/replay` (re-runs M5 on stored evidence, no persist). Read-side `DecisionAuditRepository` separate from M6's writer; dynamic SQL WHERE builder. Stable error codes (`decision_not_found`, `invalid_argument`). Wire format snake_case throughout — matches the M6 `decisions.{domain}` payload so the dashboard owns one type def. Added `baseline_entity_id` column to decisions table (with idempotent ALTER for roll-forward). ADR-006 records the API surface + read/write split rationale |
 | **M8 — Reference Configurations** | ✅ done | Schemas + feature specs + graph templates already shipped under M1/M2/M4. Session 9 added [docker-compose.yml](docker-compose.yml) (Kafka KRaft dual-listener + Confluent Schema Registry + Postgres pgvector + Neo4j 5 + four CONCLAVE services), [docker-compose.ollama.yml](docker-compose.ollama.yml) overlay for the local-only judge backend, and per-service Dockerfiles under [docker/](docker/). `make demo-fraud` / `make demo-security` switch domains via `SPRING_PROFILES_ACTIVE` on the SAME image set; `-local` variants swap the judge backend via the Ollama overlay. `.env.example` documents the `ANTHROPIC_API_KEY` env var. Full boot deferred to next session (compose configs validate clean). ADR-008 records the design |
 | **M9 — Synthetic Data Generators** | ✅ done | New `generators/` Maven module. Two CLIs (`FraudGeneratorMain`, `SecurityGeneratorMain`) plus seven `Scenario` impls (clean / card-testing ring / ATO / bust-out for fraud; clean / lateral-movement / ATO / exfil for security). Plain `KafkaProducer<String, SpecificRecord>` — no Spring, ~1s cold start. Ground-truth labels published as JSON on `events.{domain}.labels` so the orchestrator never sees them. **36 unit tests + 2 Testcontainers ITs, 91% line / 88% branch coverage.** ADR-007 records the no-Spring choice, label-side-topic rationale, and pattern catalog |
-| **M10 — Dashboard + Demo Harness** | 🟡 not started | M8's compose stack already covers the harness side; M10 is now strictly the Vite/React dashboard piece |
+| **M10 — Dashboard + Demo Harness** | ✅ done | New `dashboard/` Vite + React 19 + Tailwind v4 + TanStack Query app. Consumes the M7 audit API: paginated decision list with 5-filter bar + 10-bucket score histogram + 5s polling; decision detail view with judge-verdict markdown, signed-weight contributing-factor bars, replay button (shows fresh decision in a separate "not persisted" card). Builds clean (720 KB JS / 211 KB gzipped). Plus `website/` — single-page marketing site (same stack, no router) with hero / problem / how-it-works / configs / benchmarks / quickstart sections, ready for Cloudflare Pages deploy. ADR-009 records the Tailwind v4 + shadcn-inlined + TanStack-polling choices. README + DESIGN.md cross-link everything |
 
-**Last green build:** Session 9 (see history below) — **219/219 Java tests + 99/99 Python tests passing across 6 modules** (orchestrator: 111 [34 pre-M6 + 51 M6 + 26 M7], baseline: 40, graph: 30, generators: 38 [36 unit + 2 IT], agents: 99). Coverage: orchestrator 91%/75% (post-M7), baseline 99%/92%, graph 94%/88%, generators 91%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
+**Last green build:** Session 10 (see history below) — **219/219 Java tests + 99/99 Python tests passing across 6 modules** (orchestrator: 111 [34 pre-M6 + 51 M6 + 26 M7], baseline: 40, graph: 30, generators: 38 [36 unit + 2 IT], agents: 99). Coverage: orchestrator 91%/75% (post-M7), baseline 99%/92%, graph 94%/88%, generators 91%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below). Dashboard + website both build cleanly via `npm run build` (Vite 6).
 **Coverage threshold enforced:** 80% line, 70% branch (JaCoCo); 80% line (pytest-cov).
 
 ---
 
 ## ▶️ Next Actions (top of the queue for the next agent)
 
-1. **Smoke-test the demo stack end-to-end.** Copy [.env.example](.env.example)
-   to `.env`, fill `ANTHROPIC_API_KEY`, then `make demo-fraud`. Expect
-   the first run to pull ~2 GB of base images + build 4 service images.
-   Validate that:
-   - `curl http://localhost:8080/api/v1/decisions?limit=5` returns rows
-     within ~30 s of `demo-fraud` returning.
-   - The fraud generator's labeled events show up on
-     `events.fraud.labels` (via `docker exec conclave-kafka
-     kafka-console-consumer --topic events.fraud.labels --from-beginning
-     --bootstrap-server kafka:29092 --max-messages 5`).
-   - `make demo-stop && make demo-security` flips the domain without
-     a rebuild.
-   - `make demo-fraud-local` boots the Ollama path (first run pulls
-     qwen3:8b — ~6 GB).
-   - Capture any wiring fixes needed in a follow-up commit.
-2. **Then M10 — Audit Dashboard.** Vite + React + shadcn/ui on
-   Cloudflare Pages; consumes the M7 REST API on `localhost:8080/api/v1/`.
-   - The dashboard can drop the M7 OpenAPI generation gap by reading
-     `docs/adr/0006-audit-api-surface.md` + the controller javadoc.
-   - Also subscribe to `decisions.{domain}` over a server-sent-events
-     bridge for the live feed; M6's payload is already snake_case + matches
-     M7's DTO shape (one type def per spec).
-3. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
-4. Add ADRs under `docs/adr/` for each new abstraction.
+All ten implementable modules are green. What's left to declare the project
+"done" per spec §11 are content/deploy tasks — not code:
+
+1. **End-to-end smoke-test the stack on a fresh Mac.**
+   `git clone && cp .env.example .env && make demo-fraud`. Verify the
+   dashboard at [http://localhost:5173](http://localhost:5173) (start
+   with `make dashboard-dev` in a second terminal) shows decisions
+   flowing. Iterate on any compose wiring fixes that surface — the
+   YAML validates clean but no full boot has happened yet.
+2. **Record demo GIFs + Loom video** (spec §7). Fraud config: clean
+   stream → card-testing ring → CONCLAVE flags → drill into the
+   decision → graph view. Then `make demo-stop && make demo-security`
+   + lateral-movement scenario. Once the GIFs land, drop them into
+   README.md (and link from website/src/App.tsx Hero section).
+3. **Deploy `website/` to Cloudflare Pages.** `make website-build`
+   produces a static `website/dist/` directory; point a Pages project
+   at it.
+4. **Run the benchmark + write the arXiv paper** (spec §9). The eval
+   pipeline reads `decisions.{domain}` ⋈ `events.{domain}.labels` on
+   `event_id`. M9's labeled streams + IEEE-CIS Fraud + BETH security
+   are the inputs.
+5. **Resume bullet draft.** Capability-focused, per spec §11.
+
+Optional refinements that would harden the project but aren't blockers:
+
+- Code-split recharts out of the dashboard's main bundle (saves ~150 KB).
+- Add a `LICENSE` file (MIT per spec §11).
+- Wire CI for the dashboard + website (npm install + build) — currently
+  only the Java + Python modules have CI.
+- Promote `springdoc-openapi` to a real version once it ships for
+  Spring Boot 4; replace the hand-written
+  [dashboard/src/lib/types.ts](dashboard/src/lib/types.ts) with codegen.
 
 **The full data plane runs end-to-end.** A raw event published to
 `events.{domain}.raw` flows through M2 (Kafka Streams) → emits on
@@ -140,7 +148,8 @@ CONCLAVE/
 │       ├── 0005-decision-persistence-and-dlq.md       # M6 ✅
 │       ├── 0006-audit-api-surface.md                  # M7 ✅
 │       ├── 0007-synthetic-data-generators.md          # M9 ✅
-│       └── 0008-compose-demo-harness.md               # M8 ✅
+│       ├── 0008-compose-demo-harness.md               # M8 ✅
+│       └── 0009-dashboard-tech-choices.md             # M10 ✅
 ├── docker-compose.yml                          # M8 ✅
 ├── docker-compose.ollama.yml                   # M8 ✅ (local-only judge overlay)
 ├── .env.example                                # M8 ✅
@@ -247,9 +256,21 @@ CONCLAVE/
 │       │   │   └── security/                   # 4 scenarios + SecurityGeneratorMain
 │       │   └── resources/logback.xml
 │       └── test/java/                          # 36 unit + 2 IT tests, 91%/88% coverage
-├── dashboard/                       # M10 — not yet created
-├── website/                         # M10 — not yet created
-└── benchmark/                       # not yet created
+├── dashboard/                       # M10 ✅ Vite + React + Tailwind audit UI
+│   ├── package.json
+│   ├── vite.config.ts (proxies /api → :8080 in dev)
+│   ├── src/
+│   │   ├── lib/{api.ts, types.ts, utils.ts}
+│   │   ├── hooks/useDecisions.ts (TanStack Query, 5 s polling)
+│   │   ├── components/ (DecisionTable, FilterBar, ScoreHistogram,
+│   │   │                ContributingFactors, JsonBlock, VerdictMarkdown, …)
+│   │   ├── pages/{DecisionsPage, DecisionDetailPage}.tsx
+│   │   └── App.tsx
+├── website/                         # M10 ✅ marketing SPA (Cloudflare-Pages-ready)
+│   ├── package.json
+│   ├── src/{App.tsx, main.tsx, index.css}
+│   └── public/conclave-favicon.svg
+└── benchmark/                       # not yet created (eval pipeline — post-M10)
 ```
 
 ---
@@ -1021,3 +1042,90 @@ booted it yet. After that, M10 — Vite + React + shadcn/ui dashboard
 against the M7 audit API on `http://localhost:8080/api/v1/`. ADR-006
 + application.yaml are the contract; M6's Kafka payload + M7's REST
 DTO share the same snake_case shape so the dashboard owns one type def.
+
+### Session 10 — 2026-05-26 — M10 landed (Dashboard + Marketing site)
+**Agent:** Claude Opus 4.7
+**Started from:** Session 9's commit `76b6ee6`.
+
+**Delivered:**
+- New [dashboard/](dashboard/) Vite + React 19 app — audit UI for the M7
+  REST API.
+  - **Stack:** Vite 6, React 19, TypeScript strict, Tailwind v4 (CSS-first
+    config via `@theme`), TanStack Query v5, react-router v7, lucide-react,
+    recharts. JetBrains Mono + Geist Sans via Fontsource. shadcn-style
+    primitives inlined (~80 lines) rather than pulled from the shadcn CLI
+    to keep the bundle lean. No Framer Motion (audit UI is tabular —
+    animation would compete with the data).
+  - **DecisionsPage** ([src/pages/DecisionsPage.tsx](dashboard/src/pages/DecisionsPage.tsx))
+    — 5-filter bar (domain, verdict label, min/max score, entity), 10-bucket
+    score histogram (recharts), paginated decision table with score badge +
+    verdict pill + judge provider + relative timestamp. 5-second polling
+    via `QueryClient.defaultOptions.queries.refetchInterval` so the
+    "incoming events stream" use-case lights up without explicit SSE.
+  - **DecisionDetailPage** ([src/pages/DecisionDetailPage.tsx](dashboard/src/pages/DecisionDetailPage.tsx))
+    — metadata header (verdict + score + entity + judge + latency + ids +
+    timestamp), tiny markdown subset renderer for the verdict explanation
+    (`**bold**` + bullets + inline `code`, no `react-markdown` dep),
+    signed-weight contributing-factor bars (positive→BLOCK red, negative
+    →ALLOW green), copyable JSON viewer for the enriched event, and a
+    Replay button that calls `POST /decisions/:id/replay` and shows the
+    fresh decision in a separate "not persisted" card (matching the
+    ADR-006 audit semantic where replay never mutates history).
+  - **Type contract:** [src/lib/types.ts](dashboard/src/lib/types.ts)
+    hand-mirrors the M7 Java DTOs (`DecisionSummary`, `DecisionDetail`,
+    `ContributingFactor`, `DecisionPage`, error envelope) since
+    springdoc-openapi 2.x doesn't support Spring Boot 4 yet (ADR-006
+    gap). Cross-referenced via comment block in the file.
+  - **Build:** 2572 modules → 720 KB JS / 211 KB gzipped (recharts is
+    most of the weight). TypeScript strict passes.
+- New [website/](website/) marketing SPA — same Vite + Tailwind v4 stack,
+  no router, no data deps. Sections: hero, problem statement, four-agent
+  how-it-works, side-by-side fraud/security config cards, latency benchmark
+  table (M3 measured, M5/M6 pending eval), quickstart code block, footer.
+  Builds to 65 KB gzipped JS + 18 KB gzipped CSS — well within Cloudflare
+  Pages free tier.
+- [README.md](README.md) at repo root: pitch + quickstart + module map
+  + acceptance-criteria status table. Replaces the placeholder pitch
+  spec §11 called out as missing.
+- [DESIGN.md](DESIGN.md) — architectural decision log entry point. ASCII
+  data-flow diagram, table of all 9 ADRs with one-line summaries, the
+  seven cross-cutting invariants, and a "where to read the contract"
+  staircase.
+- ADR-009 ([docs/adr/0009-dashboard-tech-choices.md](docs/adr/0009-dashboard-tech-choices.md))
+  records the Tailwind v4 CSS-first choice, shadcn primitives inlined,
+  TanStack Query polling vs SSE, no-Framer-Motion, no `react-markdown`,
+  Vite dev proxy for `/api`, and the type-drift risk vs OpenAPI codegen.
+- Makefile additions: `dashboard-install`, `dashboard-dev`, `dashboard-build`,
+  `website-install`, `website-dev`, `website-build`. Each calls `npm` in
+  the right working directory; no global npm config required.
+
+**Build/check status:**
+- `npm run build` in `dashboard/` → ✓ built (Vite 6, 2.08 s).
+- `npm run build` in `website/` → ✓ built (Vite 6, 955 ms).
+- TypeScript strict mode passes in both.
+- No backend changes; the Java + Python builds remain green at 219+99
+  tests.
+
+**New gotchas surfaced in [SCRATCHPAD.md](SCRATCHPAD.md):**
+- Tailwind v4 uses `@import "tailwindcss"` + `@theme { ... }` in CSS —
+  no `tailwind.config.ts`, no PostCSS config file. The
+  `@tailwindcss/vite` plugin handles everything.
+- TypeScript needs `"types": ["vite/client"]` in `tsconfig.app.json`
+  for `import.meta.env` typing. Without it the build trips
+  TS2339 on `import.meta.env`.
+- `node:path` + `__dirname` in `vite.config.ts` require
+  `@types/node` + `"types": ["node"]` in `tsconfig.node.json`.
+- shadcn CLI scaffolds Radix primitives we don't need; inlining the
+  three components (Button, Card, Field) we actually use beats
+  the CLI for an audit UI.
+- Polling (5 s) via `QueryClient.defaultOptions` is enough for the
+  spec's "incoming events stream" feel — SSE would need a separate
+  Spring endpoint and a parallel subscription pattern; deferred.
+
+**Handoff for Session 11 (or the human owner):** The codebase
+implementation is complete. Remaining items are content/deploy —
+see Next Actions: smoke-test the stack on a fresh Mac, record demo
+GIFs + Loom, deploy `website/` to Cloudflare Pages, run the
+benchmark + write the arXiv paper, draft the resume bullet. The
+`benchmark/` directory in spec §10 is still empty — that's the
+next code-track if/when eval becomes a priority.
