@@ -18,56 +18,56 @@
 | **M5 — LangGraph Deliberation Orchestrator** | ✅ done | New `agents/` Python project (uv-managed). LangGraph state graph: feature → (baseliner ∥ graph_reasoner) → judge with graceful per-node degradation. `JUDGE_LLM_PROVIDER` factory routes between Claude Haiku 4.5 (Anthropic SDK, tool-use structured output) and Ollama (`langchain-ollama`, `format=json`). gRPC server on port 9093. **99 tests, 98% line coverage** (gate: 80%). ADR-004 records the provider-factory rationale |
 | **M6 — Decision Orchestrator** | ✅ done | New `io.conclave.orchestrator` package inside the existing `orchestrator/` module. @KafkaListener on `events.{domain}.enriched`, calls M5 over gRPC (grpc-netty-shaded), persists to Postgres (decisions JSONB schema), emits JSON on `decisions.{domain}`. DLQ to `decisions.{domain}.failed` with six stable failure-reason codes. Avro→clean-JSON encoder flattens unions for M5's enriched_event_json. **85 orchestrator tests** (71 unit + 14 IT), **90% line / 77% branch** coverage. ADR-005 records the schema + DLQ design |
 | **M7 — Audit & Decision API** | ✅ done | New `io.conclave.audit` package inside `orchestrator/`. Three endpoints: `GET /api/v1/decisions` (paginated list with 8 filter params), `GET /api/v1/decisions/{id}` (detail), `POST /api/v1/decisions/{id}/replay` (re-runs M5 on stored evidence, no persist). Read-side `DecisionAuditRepository` separate from M6's writer; dynamic SQL WHERE builder. Stable error codes (`decision_not_found`, `invalid_argument`). Wire format snake_case throughout — matches the M6 `decisions.{domain}` payload so the dashboard owns one type def. Added `baseline_entity_id` column to decisions table (with idempotent ALTER for roll-forward). ADR-006 records the API surface + read/write split rationale |
-| **M8 — Reference Configurations** | 🟡 partial | fraud + security raw/enriched schemas + feature specs exist; graph templates deferred to M4 |
-| **M9 — Synthetic Data Generators** | 🟡 not started | |
+| **M8 — Reference Configurations** | 🟡 partial | fraud + security raw/enriched schemas + feature specs + graph templates exist; the docker-compose + `make demo-{fraud,security}` switching story is the remaining piece |
+| **M9 — Synthetic Data Generators** | ✅ done | New `generators/` Maven module. Two CLIs (`FraudGeneratorMain`, `SecurityGeneratorMain`) plus seven `Scenario` impls (clean / card-testing ring / ATO / bust-out for fraud; clean / lateral-movement / ATO / exfil for security). Plain `KafkaProducer<String, SpecificRecord>` — no Spring, ~1s cold start. Ground-truth labels published as JSON on `events.{domain}.labels` so the orchestrator never sees them. **36 unit tests + 2 Testcontainers ITs, 91% line / 88% branch coverage.** ADR-007 records the no-Spring choice, label-side-topic rationale, and pattern catalog |
 | **M10 — Dashboard + Demo Harness** | 🟡 not started | |
 
-**Last green build:** Session 7 (see history below) — **181/181 Java tests + 99/99 Python tests passing across 5 modules** (orchestrator: 111 [34 pre-M6 + 51 M6 + 26 M7], baseline: 40, graph: 30, agents: 99). Coverage: orchestrator 91%/75% (post-M7), baseline 99%/92%, graph 94%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
+**Last green build:** Session 8 (see history below) — **219/219 Java tests + 99/99 Python tests passing across 6 modules** (orchestrator: 111 [34 pre-M6 + 51 M6 + 26 M7], baseline: 40, graph: 30, generators: 38 [36 unit + 2 IT], agents: 99). Coverage: orchestrator 91%/75% (post-M7), baseline 99%/92%, graph 94%/88%, generators 91%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
 **Coverage threshold enforced:** 80% line, 70% branch (JaCoCo); 80% line (pytest-cov).
 
 ---
 
 ## ▶️ Next Actions (top of the queue for the next agent)
 
-1. **Start M9 — Synthetic Data Generators.** Two Java CLIs that publish to
-   `events.{domain}.raw`. See spec §6 M9 for the adversarial pattern catalog:
-   - **Fraud generator** — clean txns + card-testing rings + ATO patterns + bust-out fraud.
-   - **Security generator** — clean auth + lateral movement + exfiltration + ATO.
-   - Generators produce labeled streams (ground-truth tags) so the eval pipeline
-     can compute AUC + precision@FPR=1%.
-   - Mirror the existing producer SDK in `io.conclave.ingest` — keep
-     `KafkaEventProducer` as the publish path so M1's idempotent + acks=all
-     settings flow through.
-   - New `generators/` directory at repo root (matches spec §10). Could be a
-     Maven module (`generators/pom.xml`) or just a `main` class in `orchestrator/`
-     — judgment call when wiring it up.
-2. **Then M8 — Reference Configurations.** Already partial (fraud + security
-   raw/enriched schemas + feature specs + graph templates exist). What's left:
-   the `make demo-fraud` and `make demo-security` switching story, plus a
-   `docker-compose.yml` that boots Kafka + Postgres + Neo4j + the four Java
-   services + M5 (anthropic backend) for a complete demo.
-3. **Then M10 — Audit Dashboard + Demo Harness.** Vite + React + shadcn/ui on
+1. **Finish M8 — Reference Configurations.** Schemas + feature specs + graph
+   templates exist already. What's left:
+   - `docker-compose.yml` at repo root: Kafka + Schema Registry + Postgres
+     + Neo4j + the 4 Java services + M5 (anthropic backend) so the full
+     pipeline boots end-to-end.
+   - `make demo-fraud` / `make demo-security` targets: launch the compose
+     stack with `SPRING_PROFILES_ACTIVE=...` per service, then invoke the
+     M9 generator with reasonable defaults for the demo.
+   - `make demo-fraud-local` / `make demo-security-local` variants: same
+     compose + an Ollama sidecar with `qwen3:8b` pre-pulled, setting
+     `JUDGE_LLM_PROVIDER=ollama` on M5.
+2. **Then M10 — Audit Dashboard + Demo Harness.** Vite + React + shadcn/ui on
    Cloudflare Pages; consumes the M7 REST API on `localhost:8080/api/v1/`.
    - The dashboard can drop the M7 OpenAPI generation gap by reading
      `docs/adr/0006-audit-api-surface.md` + the controller javadoc.
-4. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
-5. Add ADRs under `docs/adr/` for each new abstraction.
+   - Also subscribe to `decisions.{domain}` over a server-sent-events
+     bridge for the live feed; M6's payload is already snake_case + matches
+     M7's DTO shape (one type def per spec).
+3. Update [PROGRESS.md](PROGRESS.md) and commit after each module lands green.
+4. Add ADRs under `docs/adr/` for each new abstraction.
 
 **The full data plane runs end-to-end.** A raw event published to
 `events.{domain}.raw` flows through M2 (Kafka Streams) → emits on
 `events.{domain}.enriched` → M6 consumes → calls M5 over gRPC →
 persists to Postgres → emits on `decisions.{domain}` (or `.failed`
 on DLQ). M7 exposes the audit + replay surface on top of that.
+M9 provides labeled synthetic traffic that drives the whole pipeline
+for demos and benchmarks.
 
-**Heads up for M9:**
-- The producer SDK already exists ([KafkaEventProducer](orchestrator/src/main/java/io/conclave/ingest/KafkaEventProducer.java))
-  with idempotent + acks=all baked in. M9's generators should consume it as a
-  library, not re-implement.
-- Spec §13 lists ground-truth datasets (IEEE-CIS Fraud, BETH security) for
-  benchmark *comparison*. M9's synthetic streams are the demo data; the eval
-  pipeline (later) blends the two.
-- Labels go in a side topic, not on the raw event — the orchestrator must NOT
-  see the ground-truth label.
+**Heads up for M8 (compose):**
+- M9's CLIs assume Kafka on `KAFKA_BOOTSTRAP_SERVERS` (default
+  `localhost:9092`) and Schema Registry on `SCHEMA_REGISTRY_URL`
+  (default `mock://conclave-default` for tests; compose stack will
+  need a real Confluent Schema Registry container).
+- The four Java services bind: orchestrator 8080 + 9090, baseline
+  8081 + 9091, graph 8082 + 9092, agents 9093. M6 reads M5 via
+  `DELIBERATION_TARGET=host:9093`.
+- All Java services boot from a single `SPRING_PROFILES_ACTIVE`
+  (fraud or security) so the same image switches domain via env var.
 
 **Heads up for M10:**
 - API base URL: `http://localhost:8080/api/v1/decisions`.
@@ -134,7 +134,8 @@ CONCLAVE/
 │       ├── 0003-graph-templates-and-schema.md         # M4 ✅
 │       ├── 0004-judge-llm-provider-factory.md         # M5 ✅
 │       ├── 0005-decision-persistence-and-dlq.md       # M6 ✅
-│       └── 0006-audit-api-surface.md                  # M7 ✅
+│       ├── 0006-audit-api-surface.md                  # M7 ✅
+│       └── 0007-synthetic-data-generators.md          # M9 ✅
 ├── orchestrator/                    # Java/Spring service (M1, M2, M6, M7)
 │   ├── pom.xml
 │   └── src/
@@ -216,7 +217,23 @@ CONCLAVE/
 │   │   ├── graph.py                            # LangGraph wiring: feature → (baseliner ∥ graph_reasoner) → judge
 │   │   └── server/                             # gRPC server for DeliberationService
 │   └── tests/                                  # 99 tests, 98% line coverage
-├── generators/                      # M9 — not yet created
+├── generators/                      # M9 ✅  (no Spring; plain KafkaProducer)
+│   ├── pom.xml
+│   └── src/
+│       ├── main/
+│       │   ├── java/io/conclave/generators/
+│       │   │   ├── EventPublisher.java         # mirrors M1's idempotent + acks=all producer
+│       │   │   ├── GeneratorDomain.java        # mirror of io.conclave.ingest.EventDomain
+│       │   │   ├── GeneratorRunner.java        # drains a List<Scenario> into a publisher
+│       │   │   ├── CliOptions.java             # hand-rolled --flag value parser
+│       │   │   ├── Labels.java                 # ground-truth label enum
+│       │   │   ├── LabelRecord.java            # JSON record published to events.{domain}.labels
+│       │   │   ├── LabeledEvent.java           # (event, label, scenarioId, reason)
+│       │   │   ├── Scenario.java               # functional interface: Stream<LabeledEvent>
+│       │   │   ├── fraud/                      # 4 scenarios + FraudGeneratorMain
+│       │   │   └── security/                   # 4 scenarios + SecurityGeneratorMain
+│       │   └── resources/logback.xml
+│       └── test/java/                          # 36 unit + 2 IT tests, 91%/88% coverage
 ├── dashboard/                       # M10 — not yet created
 ├── website/                         # M10 — not yet created
 └── benchmark/                       # not yet created
@@ -804,3 +821,105 @@ docker-compose harness easier. M10 (dashboard) consumes the M7 REST API
 + the `decisions.{domain}` Kafka topic; ADR-006 + this PROGRESS entry +
 [application.yaml](orchestrator/src/main/resources/application.yaml) are
 the contract.
+
+### Session 8 — 2026-05-26 — M9 landed (Synthetic Data Generators)
+**Agent:** Claude Opus 4.7
+**Started from:** Session 7's commit `5eb565b`.
+
+**Delivered:**
+- New `generators/` Maven module — fourth Java sibling. No Spring Boot
+  (CLI cold start matters): plain `kafka-clients` + `avro` +
+  `kafka-avro-serializer` + `jackson-databind` + `slf4j` / `logback`.
+- Avro classes regenerated from `configs/` using the same parent-pom
+  `avro-maven-plugin` config the orchestrator module uses, so the
+  generators emit the exact bytes M1's consumer can deserialize.
+- Java sources in [generators/src/main/java/io/conclave/generators/](generators/src/main/java/io/conclave/generators/):
+  - [EventPublisher](generators/src/main/java/io/conclave/generators/EventPublisher.java)
+    — owns two producers (Avro for raw, String for labels). Mirrors M1's
+    `KafkaProducerConfig` settings exactly: `enable.idempotence=true`,
+    `acks=all`, `max.in.flight.requests.per.connection=5`.
+  - [GeneratorDomain](generators/src/main/java/io/conclave/generators/GeneratorDomain.java)
+    — mirror of `io.conclave.ingest.EventDomain` (kept independent to avoid
+    pulling Spring + Postgres + gRPC into a CLI module).
+  - [GeneratorRunner](generators/src/main/java/io/conclave/generators/GeneratorRunner.java)
+    — drains a `List<Scenario>` into the publisher, counts clean vs
+    adversarial, aborts on first publish exception (no partial-truth
+    label streams).
+  - [CliOptions](generators/src/main/java/io/conclave/generators/CliOptions.java)
+    — hand-rolled `--flag value` parser. Eight flags, no picocli.
+  - [Labels](generators/src/main/java/io/conclave/generators/Labels.java)
+    + [LabelRecord](generators/src/main/java/io/conclave/generators/LabelRecord.java)
+    — ground-truth enum + snake_case JSON record published to
+    `events.{domain}.labels`.
+  - `fraud/` package — `CleanFraudScenario` (organic CNP),
+    `CardTestingRingScenario` (one device, many cards, low amounts),
+    `FraudAtoScenario` (geo flip + device change), `BustOutScenario`
+    (gradual ramp then high-ticket bursts), `FraudGeneratorMain`.
+  - `security/` package — `CleanAuthScenario`, `LateralMovementScenario`
+    (one principal, many hosts, shared session), `SecurityAtoScenario`
+    (SSO→password regime change), `ExfiltrationScenario` (privileged
+    reads of sensitive resources), `SecurityGeneratorMain`.
+- ADR-007 ([docs/adr/0007-synthetic-data-generators.md](docs/adr/0007-synthetic-data-generators.md))
+  records the no-Spring decision, the labels-on-side-topic choice
+  (leakage prevention), the `Scenario` interface design, and the
+  full pattern catalog mapping each scenario to the detector that
+  should fire.
+- Makefile additions: `m9-test`, `m9-verify`, `m9-run-fraud`,
+  `m9-run-security`. The run targets shell out to `exec-maven-plugin`
+  so contributors can `make m9-run-fraud ARGS="--clean 5000 --rings 3"`
+  against a local broker.
+
+**Tests — 38 generator tests total, all green** (`mvn -pl generators verify`):
+
+  - **Unit (36)**: `CliOptionsTest` (6), `GeneratorDomainTest` (2),
+    `LabelRecordTest` (2), `EventPublisherTest` (3 — Mockito-mocked
+    `Producer<String, SpecificRecord>` + `Producer<String, String>`,
+    verifies routing, key extraction, flush+close), `GeneratorRunnerTest`
+    (3 — counts, ordering, abort-on-failure), `CleanFraudScenarioTest`
+    (3 — count, population diversity, determinism),
+    `CardTestingRingScenarioTest` (3 — one device per ring, small
+    amounts, scenarioId stability), `FraudAtoScenarioTest` (3 — warmup
+    then takeover, regime shift, amount escalation), `BustOutScenarioTest`
+    (2 — ramp + bust, single cardholder), `FraudGeneratorMainTest`
+    (2 — scenario planning), `CleanAuthScenarioTest` (2),
+    `LateralMovementScenarioTest` (2), `SecurityAtoScenarioTest` (1),
+    `ExfiltrationScenarioTest` (1), `SecurityGeneratorMainTest` (1).
+  - **Integration (2)**: `GeneratorIT` boots Testcontainers Kafka, runs
+    both planners end-to-end, asserts every raw event has a matching
+    label row keyed identically on `events.{domain}.labels`, and that
+    each domain's expected scenarios (`CARD_TESTING_RING`, `FRAUD_ATO`,
+    `LATERAL_MOVEMENT`, `EXFILTRATION`, `SECURITY_ATO`) all appear.
+    One IT class for both domains because the per-class JVM fork
+    dominates runtime; total IT wall-clock ~13s.
+- **Coverage: 91% line / 88% branch** on the generators module
+  (gate: 80%/70%). 546 lines analyzed across 23 classes.
+
+**Full repo green: 219/219 Java tests across 5 modules** (orchestrator 111,
+baseline 40, graph 30, generators 38, plus 99 Python tests in agents).
+
+**Build settings changed:**
+- Root pom `<modules>` now includes `generators`. No changes needed to
+  JaCoCo excludes or Avro plugin config — the parent pluginManagement
+  + Avro plugin block both apply automatically.
+- Added `org.codehaus.mojo:exec-maven-plugin:3.5.0` to generators pom
+  so the `make m9-run-*` targets work via
+  `mvn exec:java -Dexec.mainClass=...`.
+
+**New gotchas surfaced in [SCRATCHPAD.md](SCRATCHPAD.md):**
+- `KafkaProducer<String, SpecificRecord>` works fine even without Spring's
+  generic-aware DI — the raw `KafkaProducer` constructor takes a
+  `Properties`/`Map`, not a type-parameterized factory.
+- Mock testing `Producer<...>` with Mockito requires `@SuppressWarnings`
+  for the unchecked generic mocks. Acceptable in test code.
+- AssertJ's `.allMatch(predicate)` short-circuits — useful for "every
+  event has the same scenarioId" without writing a forEach loop.
+- Testcontainers `KafkaContainer` (`confluentinc/cp-kafka:7.6.0`) prints
+  `LEADER_NOT_AVAILABLE` warnings on first publish; benign — the topic
+  is being auto-created. Use `await().atMost(60s)` for the consume loop.
+
+**Handoff for Session 9:** Start at M8 (compose + demo Makefile targets)
+— see "Next Actions" above. The generators publish to
+`events.{domain}.raw` + `events.{domain}.labels`; the M1 producer SDK is
+unchanged and a compose stack would expose Kafka on the host network
+for both sides. Then M10 (dashboard). The label topic is NOT subscribed
+by any in-repo component yet — it's purely for the future eval pipeline.

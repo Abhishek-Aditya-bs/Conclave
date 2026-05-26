@@ -30,6 +30,7 @@
         <module>orchestrator</module>
         <module>baseline</module>
         <module>graph</module>
+        <module>generators</module>
     </modules>
 
     <properties>

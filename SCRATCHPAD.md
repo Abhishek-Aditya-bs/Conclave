@@ -34,6 +34,43 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-26 — M9 (Synthetic Data Generators) gotchas
+
+1. **No Spring Boot for a CLI tool.** Spring autoconfig is built for
+   long-lived services; for a process whose main work is "publish N events
+   and exit," the 6-8s cold start dominates. The generators module uses
+   plain `KafkaProducer` directly with hand-built `Properties`. Cold start
+   drops to ~1s.
+2. **Avro plugin works module-by-module.** Each module that wants the
+   `io.conclave.events.*` classes adds the `avro-maven-plugin` to its
+   `<plugins>` (no config needed; inherited from parent `<pluginManagement>`).
+   Don't try to share generated classes via a JAR dep — duplication is
+   cheaper than the coupling.
+3. **Labels on a SIDE topic, not on the raw event.** Anything embedded in
+   the raw event has to be scrubbed by M2 before emitting enriched, which
+   is one more place leakage can sneak in. `events.{domain}.labels` keyed
+   by `eventId` is one KTable join away when the eval pipeline lands.
+4. **Mirror, don't import.** The generators recreate
+   `io.conclave.ingest.EventDomain` as `GeneratorDomain` and re-state the
+   producer settings (`acks=all`, idempotent) rather than depending on
+   the orchestrator JAR. Cross-referenced via comments in both places +
+   ADR-007. A future change to producer settings touches BOTH sites.
+5. **Mocked `Producer<K, V>` test pattern.** `@SuppressWarnings("unchecked")`
+   on the `mock(Producer.class)` line — Mockito's `mock(Class)` can't
+   carry generic type info. Acceptable in tests.
+6. **`KafkaContainer` first-publish warnings are benign.** Look for
+   `LEADER_NOT_AVAILABLE` on the first send to a new topic — the topic is
+   being auto-created. Use `await().atMost(60s)` on consume loops so the
+   container has time to settle.
+7. **`exec-maven-plugin` is the painless way to wire `make m9-run-*`.**
+   Adding the plugin (version 3.5.0) lets `mvn exec:java
+   -Dexec.mainClass=...` run a CLI without packaging a fat JAR. Pair
+   with a `make ARGS=` pattern so users can pass `--clean 5000 --rings 3`.
+8. **Hand-rolled CLI parser pattern.** `while (i < args.length)` with
+   `flag = args[i]; value = args[i+1]; i += 2;`. The switch case never
+   has to fiddle with `i`. Six unit tests cover defaults, all-flags, help,
+   unknown flag, missing value, negative count.
+
 ### 2026-05-26 — M7 (Audit & Decision API) gotchas
 
 1. **`@TestInstance(Lifecycle.PER_CLASS)` breaks Testcontainers/`@DynamicPropertySource`

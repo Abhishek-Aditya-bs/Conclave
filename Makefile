@@ -36,12 +36,35 @@ clean: ## Remove all build output.
 	$(MVN) -q clean
 
 # ---- Module shortcuts ----
-.PHONY: m1-test m1-verify
+.PHONY: m1-test m1-verify m9-test m9-verify m9-run-fraud m9-run-security
 m1-test: check-java ## Run M1 unit tests only.
 	$(MVN) -pl orchestrator -q test
 
 m1-verify: check-java ## Run M1 unit + integration tests.
 	$(MVN) -pl orchestrator verify
+
+# ---- M9 (synthetic data generators) ----
+#
+# `make m9-run-fraud` / `make m9-run-security` assume a Kafka broker is
+# already up on localhost:9092 (or KAFKA_BOOTSTRAP_SERVERS) with the
+# Confluent Schema Registry reachable at SCHEMA_REGISTRY_URL.
+m9-test: check-java ## Run M9 unit tests only.
+	$(MVN) -pl generators -am -q test
+
+m9-verify: check-java ## Run M9 unit + integration tests (Testcontainers Kafka).
+	$(MVN) -pl generators -am verify
+
+m9-run-fraud: check-java ## Launch the fraud generator against the local broker.
+	$(MVN) -pl generators -am -q compile
+	$(MVN) -pl generators -q exec:java \
+	  -Dexec.mainClass=io.conclave.generators.fraud.FraudGeneratorMain \
+	  -Dexec.args="$(ARGS)"
+
+m9-run-security: check-java ## Launch the security generator against the local broker.
+	$(MVN) -pl generators -am -q compile
+	$(MVN) -pl generators -q exec:java \
+	  -Dexec.mainClass=io.conclave.generators.security.SecurityGeneratorMain \
+	  -Dexec.args="$(ARGS)"
 
 # ---- M5 (Python LangGraph) ----
 #
