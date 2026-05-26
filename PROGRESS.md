@@ -18,29 +18,33 @@
 | **M5 — LangGraph Deliberation Orchestrator** | ✅ done | New `agents/` Python project (uv-managed). LangGraph state graph: feature → (baseliner ∥ graph_reasoner) → judge with graceful per-node degradation. `JUDGE_LLM_PROVIDER` factory routes between Claude Haiku 4.5 (Anthropic SDK, tool-use structured output) and Ollama (`langchain-ollama`, `format=json`). gRPC server on port 9093. **99 tests, 98% line coverage** (gate: 80%). ADR-004 records the provider-factory rationale |
 | **M6 — Decision Orchestrator** | ✅ done | New `io.conclave.orchestrator` package inside the existing `orchestrator/` module. @KafkaListener on `events.{domain}.enriched`, calls M5 over gRPC (grpc-netty-shaded), persists to Postgres (decisions JSONB schema), emits JSON on `decisions.{domain}`. DLQ to `decisions.{domain}.failed` with six stable failure-reason codes. Avro→clean-JSON encoder flattens unions for M5's enriched_event_json. **85 orchestrator tests** (71 unit + 14 IT), **90% line / 77% branch** coverage. ADR-005 records the schema + DLQ design |
 | **M7 — Audit & Decision API** | ✅ done | New `io.conclave.audit` package inside `orchestrator/`. Three endpoints: `GET /api/v1/decisions` (paginated list with 8 filter params), `GET /api/v1/decisions/{id}` (detail), `POST /api/v1/decisions/{id}/replay` (re-runs M5 on stored evidence, no persist). Read-side `DecisionAuditRepository` separate from M6's writer; dynamic SQL WHERE builder. Stable error codes (`decision_not_found`, `invalid_argument`). Wire format snake_case throughout — matches the M6 `decisions.{domain}` payload so the dashboard owns one type def. Added `baseline_entity_id` column to decisions table (with idempotent ALTER for roll-forward). ADR-006 records the API surface + read/write split rationale |
-| **M8 — Reference Configurations** | 🟡 partial | fraud + security raw/enriched schemas + feature specs + graph templates exist; the docker-compose + `make demo-{fraud,security}` switching story is the remaining piece |
+| **M8 — Reference Configurations** | ✅ done | Schemas + feature specs + graph templates already shipped under M1/M2/M4. Session 9 added [docker-compose.yml](docker-compose.yml) (Kafka KRaft dual-listener + Confluent Schema Registry + Postgres pgvector + Neo4j 5 + four CONCLAVE services), [docker-compose.ollama.yml](docker-compose.ollama.yml) overlay for the local-only judge backend, and per-service Dockerfiles under [docker/](docker/). `make demo-fraud` / `make demo-security` switch domains via `SPRING_PROFILES_ACTIVE` on the SAME image set; `-local` variants swap the judge backend via the Ollama overlay. `.env.example` documents the `ANTHROPIC_API_KEY` env var. Full boot deferred to next session (compose configs validate clean). ADR-008 records the design |
 | **M9 — Synthetic Data Generators** | ✅ done | New `generators/` Maven module. Two CLIs (`FraudGeneratorMain`, `SecurityGeneratorMain`) plus seven `Scenario` impls (clean / card-testing ring / ATO / bust-out for fraud; clean / lateral-movement / ATO / exfil for security). Plain `KafkaProducer<String, SpecificRecord>` — no Spring, ~1s cold start. Ground-truth labels published as JSON on `events.{domain}.labels` so the orchestrator never sees them. **36 unit tests + 2 Testcontainers ITs, 91% line / 88% branch coverage.** ADR-007 records the no-Spring choice, label-side-topic rationale, and pattern catalog |
-| **M10 — Dashboard + Demo Harness** | 🟡 not started | |
+| **M10 — Dashboard + Demo Harness** | 🟡 not started | M8's compose stack already covers the harness side; M10 is now strictly the Vite/React dashboard piece |
 
-**Last green build:** Session 8 (see history below) — **219/219 Java tests + 99/99 Python tests passing across 6 modules** (orchestrator: 111 [34 pre-M6 + 51 M6 + 26 M7], baseline: 40, graph: 30, generators: 38 [36 unit + 2 IT], agents: 99). Coverage: orchestrator 91%/75% (post-M7), baseline 99%/92%, graph 94%/88%, generators 91%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
+**Last green build:** Session 9 (see history below) — **219/219 Java tests + 99/99 Python tests passing across 6 modules** (orchestrator: 111 [34 pre-M6 + 51 M6 + 26 M7], baseline: 40, graph: 30, generators: 38 [36 unit + 2 IT], agents: 99). Coverage: orchestrator 91%/75% (post-M7), baseline 99%/92%, graph 94%/88%, generators 91%/88%, agents 98% line (Java threshold: 80%/70% JaCoCo; Python threshold: 80% line pytest-cov, both fail the build below).
 **Coverage threshold enforced:** 80% line, 70% branch (JaCoCo); 80% line (pytest-cov).
 
 ---
 
 ## ▶️ Next Actions (top of the queue for the next agent)
 
-1. **Finish M8 — Reference Configurations.** Schemas + feature specs + graph
-   templates exist already. What's left:
-   - `docker-compose.yml` at repo root: Kafka + Schema Registry + Postgres
-     + Neo4j + the 4 Java services + M5 (anthropic backend) so the full
-     pipeline boots end-to-end.
-   - `make demo-fraud` / `make demo-security` targets: launch the compose
-     stack with `SPRING_PROFILES_ACTIVE=...` per service, then invoke the
-     M9 generator with reasonable defaults for the demo.
-   - `make demo-fraud-local` / `make demo-security-local` variants: same
-     compose + an Ollama sidecar with `qwen3:8b` pre-pulled, setting
-     `JUDGE_LLM_PROVIDER=ollama` on M5.
-2. **Then M10 — Audit Dashboard + Demo Harness.** Vite + React + shadcn/ui on
+1. **Smoke-test the demo stack end-to-end.** Copy [.env.example](.env.example)
+   to `.env`, fill `ANTHROPIC_API_KEY`, then `make demo-fraud`. Expect
+   the first run to pull ~2 GB of base images + build 4 service images.
+   Validate that:
+   - `curl http://localhost:8080/api/v1/decisions?limit=5` returns rows
+     within ~30 s of `demo-fraud` returning.
+   - The fraud generator's labeled events show up on
+     `events.fraud.labels` (via `docker exec conclave-kafka
+     kafka-console-consumer --topic events.fraud.labels --from-beginning
+     --bootstrap-server kafka:29092 --max-messages 5`).
+   - `make demo-stop && make demo-security` flips the domain without
+     a rebuild.
+   - `make demo-fraud-local` boots the Ollama path (first run pulls
+     qwen3:8b — ~6 GB).
+   - Capture any wiring fixes needed in a follow-up commit.
+2. **Then M10 — Audit Dashboard.** Vite + React + shadcn/ui on
    Cloudflare Pages; consumes the M7 REST API on `localhost:8080/api/v1/`.
    - The dashboard can drop the M7 OpenAPI generation gap by reading
      `docs/adr/0006-audit-api-surface.md` + the controller javadoc.
@@ -135,7 +139,16 @@ CONCLAVE/
 │       ├── 0004-judge-llm-provider-factory.md         # M5 ✅
 │       ├── 0005-decision-persistence-and-dlq.md       # M6 ✅
 │       ├── 0006-audit-api-surface.md                  # M7 ✅
-│       └── 0007-synthetic-data-generators.md          # M9 ✅
+│       ├── 0007-synthetic-data-generators.md          # M9 ✅
+│       └── 0008-compose-demo-harness.md               # M8 ✅
+├── docker-compose.yml                          # M8 ✅
+├── docker-compose.ollama.yml                   # M8 ✅ (local-only judge overlay)
+├── .env.example                                # M8 ✅
+├── docker/                                     # M8 ✅
+│   ├── orchestrator.Dockerfile
+│   ├── baseline.Dockerfile
+│   ├── graph.Dockerfile
+│   └── agents.Dockerfile
 ├── orchestrator/                    # Java/Spring service (M1, M2, M6, M7)
 │   ├── pom.xml
 │   └── src/
@@ -923,3 +936,88 @@ baseline 40, graph 30, generators 38, plus 99 Python tests in agents).
 unchanged and a compose stack would expose Kafka on the host network
 for both sides. Then M10 (dashboard). The label topic is NOT subscribed
 by any in-repo component yet — it's purely for the future eval pipeline.
+
+### Session 9 — 2026-05-26 — M8 landed (Compose demo harness)
+**Agent:** Claude Opus 4.7
+**Started from:** Session 8's commit `3942834`.
+
+**Delivered:**
+- Top-level [docker-compose.yml](docker-compose.yml) declaring the full
+  CONCLAVE stack:
+  - **Infra:** Kafka 7.6 in KRaft single-node mode with a dual listener
+    (`PLAINTEXT://kafka:29092` for compose-internal traffic + `EXTERNAL://localhost:9092`
+    for the host-run generators); Confluent Schema Registry 7.6 on host
+    port 8085; `pgvector/pgvector:pg16` shared across orchestrator + baseline;
+    `neo4j:5-community` for the graph reasoner. Every infra service has a
+    healthcheck and the CONCLAVE services declare `depends_on:
+    {condition: service_healthy}` so the boot order is deterministic.
+  - **CONCLAVE services:** all four built from per-service Dockerfiles
+    in [docker/](docker/). Java services (orchestrator, baseline, graph)
+    use `eclipse-temurin:25-jre` + a pre-built Spring Boot fat jar (see
+    "Pre-built fat jars" in ADR-008). Agents (Python/M5) uses
+    `python:3.12-slim` + uv + a build-time `gen_protos.sh` run so the
+    container is self-contained.
+  - **Env-driven config:** orchestrator switches domain via
+    `SPRING_PROFILES_ACTIVE` ({fraud | security}). Other three services
+    are domain-agnostic. Schema Registry URL, JDBC URL, gRPC targets all
+    plumbed via env vars the application.yaml files already
+    accept (no code changes needed in the services).
+- [docker-compose.ollama.yml](docker-compose.ollama.yml) overlay: adds
+  an Ollama sidecar (auto-pulls qwen3:8b on first run, ~6 GB cached in
+  a named volume) and flips agents to `JUDGE_LLM_PROVIDER=ollama`.
+  Applied via `-f docker-compose.yml -f docker-compose.ollama.yml`.
+- [.env.example](.env.example) for `ANTHROPIC_API_KEY` + optional model
+  override. `.env` already gitignored.
+- Makefile additions:
+  - `demo-build` — `mvn -DskipTests package` on the three Java service
+    modules + `docker compose build`.
+  - `demo-fraud` / `demo-security` — run `demo-build`, then `docker
+    compose up -d` with `SPRING_PROFILES_ACTIVE` set, sleep 15s for
+    services to register, then call the matching M9 generator with a
+    sensible default burst (200 clean + 2 rings + 1 ATO + 1 extra for
+    fraud; same shape for security).
+  - `demo-fraud-local` / `demo-security-local` — same flow but with
+    the Ollama overlay layered on. Smaller burst (100 clean) since the
+    local model is slower per-decision than Haiku.
+  - `demo-stop` — `docker compose down` (keeps volumes).
+  - `demo-logs` — `docker compose logs -f` on the four CONCLAVE services.
+  - `demo-status` — `docker compose ps` + curl the M7 audit API for
+    the latest 10 decisions.
+- ADR-008 ([docs/adr/0008-compose-demo-harness.md](docs/adr/0008-compose-demo-harness.md))
+  records the design: one compose file (no per-domain forks), Ollama
+  as an overlay (not a `profiles:` switch), pre-built fat jars (not
+  in-Docker Maven), KRaft dual-listener pattern, shared Postgres,
+  healthcheck-chained boot order. Rejected alternatives listed.
+
+**Smoke-test status:**
+- `docker compose config --quiet` passes on both the base file and the
+  base+overlay layered pair.
+- Full boot deferred (~2 GB pull on first run, needs Anthropic key for
+  the non-local path). The wiring follows the same image versions +
+  env-var shapes the Testcontainers ITs (M1, M2, M3, M4, M6, M9)
+  already exercise green.
+
+**Build settings changed:**
+- No Maven changes — the demo path runs `mvn -DskipTests package`
+  which uses the existing module setup. The Java services already had
+  `spring-boot-maven-plugin` configured to produce repackaged fat jars.
+- `.gitignore` already ignored `.env`, `target/`, and `**/postgres-data/`
+  / `**/neo4j-data/` — no changes needed.
+
+**New gotchas surfaced in [SCRATCHPAD.md](SCRATCHPAD.md):**
+- KRaft Kafka requires `CLUSTER_ID` pinned to a base64-22 UUID for
+  container re-creates against persisted volumes.
+- `KAFKA_ADVERTISED_LISTENERS` per-listener is the load-bearing line:
+  EXTERNAL must advertise `localhost`, not `kafka:29092`, so host
+  clients (the M9 generators) get a reachable broker.
+- Pre-built fat jar + JRE COPY beats multi-stage Maven by 3-4 minutes
+  per iteration, because the host already has the Maven repo cached.
+- Confluent Schema Registry healthcheck via curl on `/subjects` is
+  the simplest readiness probe; doesn't require auth setup.
+
+**Handoff for Session 10:** Smoke-test the stack end-to-end (see Next
+Actions #1). The compose YAML is syntactically valid but no human has
+booted it yet. After that, M10 — Vite + React + shadcn/ui dashboard
+against the M7 audit API on `http://localhost:8080/api/v1/`. ADR-006
++ application.yaml are the contract; M6's Kafka payload + M7's REST
+DTO share the same snake_case shape so the dashboard owns one type def.

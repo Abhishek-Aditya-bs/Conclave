@@ -1,0 +1,39 @@
+# Overlay file enabling the local-only judge backend (Ollama instead of
+# Anthropic). Applied via `docker compose -f docker-compose.yml -f
+# docker-compose.ollama.yml up`, which the `make demo-fraud-local` and
+# `make demo-security-local` targets do for you.
+#
+# Brings up an Ollama sidecar with qwen3:8b pre-pulled (~6 GB VRAM/RAM)
+# and switches the agents service to point at it. No Anthropic API key
+# required. See spec §5 "Local-only mode (Ollama)".
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: conclave-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    # On first run, pull the default model in the background. Subsequent
+    # boots see the model cached in the volume and skip the download.
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "ollama serve & sleep 5 && ollama pull qwen3:8b && wait"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  agents:
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      JUDGE_LLM_PROVIDER: ollama
+      JUDGE_LLM_MODEL: qwen3:8b
+      OLLAMA_BASE_URL: http://ollama:11434
+
+volumes:
+  ollama-models:

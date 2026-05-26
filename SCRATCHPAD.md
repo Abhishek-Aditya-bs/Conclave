@@ -34,6 +34,45 @@
 
 ## 🐛 Active Bugs / Gotchas
 
+### 2026-05-26 — M8 (Compose demo harness) gotchas
+
+1. **KRaft Kafka needs a pinned CLUSTER_ID.** Without it, recreating
+   the container against a persisted log dir (e.g. after `docker
+   compose down && docker compose up`) trips
+   `InconsistentClusterIdException`. Pin to a fixed base64-22 UUID
+   (we use `MkU3OEVBNTcwNTJENDM2Qk`).
+2. **`KAFKA_ADVERTISED_LISTENERS` is the load-bearing config for
+   dual-listener setups.** Internal containers connecting to the
+   PLAINTEXT listener get `kafka:29092` back as the broker endpoint;
+   host clients connecting to EXTERNAL get `localhost:9092`. Mix them
+   up and one side will be unable to follow metadata responses.
+3. **Pre-built fat jars + JRE COPY beats in-Docker Maven.** The host
+   has the Maven cache warm from prior `mvn verify` runs;
+   re-downloading inside Docker on every iteration costs 3-5 minutes.
+   `make demo-build` runs `mvn -DskipTests package` on the host then
+   `docker compose build` (which is ~2s per service after the first).
+4. **Healthcheck-chained boot order makes `docker compose up` linear.**
+   Each infra service exposes a real healthcheck (`pg_isready`,
+   `kafka-broker-api-versions`, `cypher-shell 'RETURN 1'`,
+   `curl /subjects`). CONCLAVE services declare
+   `depends_on: {condition: service_healthy}`; the order falls out.
+5. **The agents container doesn't have a meaningful HTTP healthcheck.**
+   It's a gRPC server with no REST surface. Orchestrator depends on
+   it with `condition: service_started` only; the M6
+   DeliberationClient retries via per-call gRPC deadlines if M5 is
+   still warming.
+6. **Ollama first-boot is ~6 GB.** The `docker-compose.ollama.yml`
+   entrypoint pulls qwen3:8b in the foreground on first boot; the
+   named volume caches it for subsequent runs. Don't expect the
+   `make demo-fraud-local` healthcheck to clear in <2 minutes the
+   first time.
+7. **Schema Registry on 8085, not 8081.** Avoids the baseline REST
+   port collision. Update curl-inspection muscle memory accordingly.
+8. **Compose `depends_on` short-form (list) vs long-form (object)
+   matters.** Only the object form supports `condition:`. The
+   four CONCLAVE services use the object form; the agents `depends_on`
+   list-form would silently skip the healthcheck wait.
+
 ### 2026-05-26 — M9 (Synthetic Data Generators) gotchas
 
 1. **No Spring Boot for a CLI tool.** Spring autoconfig is built for

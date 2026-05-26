@@ -1,0 +1,195 @@
+# CONCLAVE — full-stack demo compose file.
+#
+# Brings up the data plane (Kafka + Schema Registry + Postgres pgvector +
+# Neo4j) plus all four CONCLAVE services (orchestrator + baseline + graph
+# + agents). The domain (fraud | security) is selected via
+# SPRING_PROFILES_ACTIVE — `make demo-fraud` and `make demo-security` set
+# it; here it falls through from the host shell (default fraud).
+#
+# Run via:
+#   make demo-fraud
+#   make demo-security
+#   make demo-fraud-local   # adds the Ollama sidecar via the overlay file
+#
+# The Java services are built from pre-packaged Spring Boot jars (see
+# `make demo-build`). The agents service is built from its Dockerfile.
+#
+# Networking: services reach the broker as kafka:29092 (PLAINTEXT internal).
+# The host can reach the broker on localhost:9092 — that's what the M9
+# generators use when run from `make m9-run-fraud`.
+
+services:
+  # ───────────────────────────────────────────────────────────── infra
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    hostname: kafka
+    container_name: conclave-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      # Single-node KRaft setup. CLUSTER_ID is a fixed base64-22 UUID
+      # so re-creates of the container don't trip the "cluster id mismatch"
+      # checks against the persisted log dir.
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      # Single-broker demo — replication must be 1.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:29092"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.0
+    container_name: conclave-schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8085:8085"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8085
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8085/subjects"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  postgres:
+    # pgvector image is multi-arch (Apple Silicon-safe). Same image M3 + M6
+    # use under Testcontainers, so behavior matches the test suite.
+    image: pgvector/pgvector:pg16
+    container_name: conclave-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: conclave
+      POSTGRES_PASSWORD: conclave
+      POSTGRES_DB: conclave
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conclave -d conclave"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: conclave-neo4j
+    ports:
+      - "7474:7474"   # Browser UI
+      - "7687:7687"   # Bolt driver
+    environment:
+      NEO4J_AUTH: neo4j/conclave-graph
+      # Single-node Community defaults are fine for the demo. Disable the
+      # "do you accept the licence" prompt for non-Enterprise images.
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: "no"
+    volumes:
+      - neo4j-data:/data
+    healthcheck:
+      # cypher-shell is bundled with the image; -d system bypasses auth-redirect.
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p conclave-graph 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  # ───────────────────────────────────────────────────── conclave services
+  baseline:
+    build:
+      context: .
+      dockerfile: docker/baseline.Dockerfile
+    image: conclave/baseline:0.1.0
+    container_name: conclave-baseline
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      BASELINE_DB_URL: jdbc:postgresql://postgres:5432/conclave
+      BASELINE_DB_USER: conclave
+      BASELINE_DB_PASSWORD: conclave
+    ports:
+      - "8081:8081"   # REST
+    # gRPC port (9091) is not exposed to host — only the agents container
+    # talks to it, over the compose network as baseline:9091.
+
+  graph:
+    build:
+      context: .
+      dockerfile: docker/graph.Dockerfile
+    image: conclave/graph:0.1.0
+    container_name: conclave-graph
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: conclave-graph
+    ports:
+      - "8082:8082"   # REST
+
+  agents:
+    build:
+      context: .
+      dockerfile: docker/agents.Dockerfile
+    image: conclave/agents:0.1.0
+    container_name: conclave-agents
+    depends_on:
+      - baseline
+      - graph
+    environment:
+      DELIBERATION_PORT: "9093"
+      BASELINE_SERVICE_TARGET: baseline:9091
+      GRAPH_SERVICE_TARGET: graph:9092
+      # Provider selection. Default = anthropic (requires ANTHROPIC_API_KEY
+      # in the host .env). The Ollama overlay flips this to ollama +
+      # OLLAMA_BASE_URL=http://ollama:11434.
+      JUDGE_LLM_PROVIDER: ${JUDGE_LLM_PROVIDER:-anthropic}
+      JUDGE_LLM_MODEL: ${JUDGE_LLM_MODEL:-claude-haiku-4-5-20251001}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LOG_LEVEL: INFO
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: docker/orchestrator.Dockerfile
+    image: conclave/orchestrator:0.1.0
+    container_name: conclave-orchestrator
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      agents:
+        condition: service_started
+    environment:
+      # Switches domain (fraud | security). The same image serves both.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-fraud}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8085
+      ORCHESTRATOR_DB_URL: jdbc:postgresql://postgres:5432/conclave
+      ORCHESTRATOR_DB_USER: conclave
+      ORCHESTRATOR_DB_PASSWORD: conclave
+      DELIBERATION_TARGET: agents:9093
+    ports:
+      - "8080:8080"   # M7 audit API + actuator
+
+volumes:
+  postgres-data:
+  neo4j-data:

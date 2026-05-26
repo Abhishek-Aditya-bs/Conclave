@@ -97,3 +97,70 @@ m5-coverage: m5-test ## Open the M5 HTML coverage report.
 
 m5-run: m5-install ## Launch the M5 gRPC server (needs M3 + M4 reachable).
 	cd agents && $(UV) run python -m deliberation.server.entrypoint
+
+# ---- M8 (docker-compose demo harness) ----
+#
+# Brings up the full data plane (Kafka + Schema Registry + Postgres pgvector
+# + Neo4j) + all four CONCLAVE services. Domain (fraud | security) selected
+# via SPRING_PROFILES_ACTIVE on the orchestrator. The other three services
+# are domain-agnostic.
+#
+# `make demo-fraud` / `make demo-security` use the Anthropic judge (needs
+# ANTHROPIC_API_KEY in .env). The `-local` variants layer
+# docker-compose.ollama.yml on top to swap in an Ollama sidecar with
+# qwen3:8b. See docker-compose.yml + .env.example.
+#
+# After the stack is up, the targets run the M9 generator from the host
+# (against localhost:9092) so events flow through the live pipeline.
+COMPOSE := docker compose
+COMPOSE_OLLAMA := $(COMPOSE) -f docker-compose.yml -f docker-compose.ollama.yml
+
+.PHONY: demo-build demo-fraud demo-security demo-fraud-local demo-security-local \
+        demo-stop demo-logs demo-status
+
+demo-build: check-java ## Package service jars + build the four CONCLAVE Docker images.
+	$(MVN) -pl orchestrator,baseline,graph -am -DskipTests -q package
+	$(COMPOSE) build
+
+demo-fraud: demo-build ## Boot the full stack in fraud mode and emit a starter event burst.
+	SPRING_PROFILES_ACTIVE=fraud $(COMPOSE) up -d
+	@echo "▶ stack up. waiting 15s for services to register…" && sleep 15
+	@$(MAKE) m9-run-fraud ARGS="--clean 200 --rings 2 --ato 1 --extra 1"
+	@echo "✓ demo running. dashboard contract: http://localhost:8080/api/v1/decisions"
+	@echo "  tail logs: make demo-logs"
+	@echo "  stop:      make demo-stop"
+
+demo-security: demo-build ## Boot the full stack in security mode and emit a starter event burst.
+	SPRING_PROFILES_ACTIVE=security $(COMPOSE) up -d
+	@echo "▶ stack up. waiting 15s for services to register…" && sleep 15
+	@$(MAKE) m9-run-security ARGS="--clean 200 --rings 1 --ato 1 --extra 1"
+	@echo "✓ demo running. dashboard contract: http://localhost:8080/api/v1/decisions"
+
+demo-fraud-local: demo-build ## Same as demo-fraud but with the Ollama sidecar (no API key).
+	JUDGE_LLM_PROVIDER=ollama JUDGE_LLM_MODEL=qwen3:8b SPRING_PROFILES_ACTIVE=fraud \
+	  $(COMPOSE_OLLAMA) up -d
+	@echo "▶ stack up (ollama path). first boot pulls qwen3:8b (~6 GB) — may take a few minutes."
+	@echo "  tail Ollama progress: docker logs -f conclave-ollama"
+	@sleep 20
+	@$(MAKE) m9-run-fraud ARGS="--clean 100 --rings 1 --ato 1 --extra 0"
+
+demo-security-local: demo-build ## Same as demo-security but with the Ollama sidecar (no API key).
+	JUDGE_LLM_PROVIDER=ollama JUDGE_LLM_MODEL=qwen3:8b SPRING_PROFILES_ACTIVE=security \
+	  $(COMPOSE_OLLAMA) up -d
+	@echo "▶ stack up (ollama path). first boot pulls qwen3:8b (~6 GB) — may take a few minutes."
+	@sleep 20
+	@$(MAKE) m9-run-security ARGS="--clean 100 --rings 1 --ato 1 --extra 0"
+
+demo-stop: ## Stop and remove all stack containers (keeps volumes).
+	$(COMPOSE_OLLAMA) down
+
+demo-logs: ## Tail logs from every CONCLAVE service in one terminal.
+	$(COMPOSE) logs -f orchestrator baseline graph agents
+
+demo-status: ## Show stack status + decision counts.
+	@$(COMPOSE) ps
+	@echo ""
+	@echo "Recent decisions (last 10):"
+	@curl -fsS "http://localhost:8080/api/v1/decisions?limit=10" 2>/dev/null \
+	  | python3 -m json.tool 2>/dev/null \
+	  || echo "  (orchestrator REST not reachable; is the stack up?)"
