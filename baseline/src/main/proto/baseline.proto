@@ -22,6 +22,14 @@ service BaselineService {
   // return the updated embedding. Idempotent on event_id is NOT required
   // here — the caller is expected to dedupe at the upstream stage.
   rpc UpdateBaseline(UpdateBaselineRequest) returns (UpdateBaselineResponse);
+
+  // Score a single event against the entity's existing rolling baseline
+  // WITHOUT mutating it. The service textualizes the enriched event with the
+  // SAME logic UpdateBaseline uses, embeds it, and compares it to the stored
+  // baseline embedding via pgvector cosine similarity. Returns a behavioral
+  // deviation/anomaly score the deliberation judge reasons over. Cold-start
+  // entities (no baseline yet) return cold_start=true and a neutral prior.
+  rpc ScoreEvent(ScoreEventRequest) returns (ScoreEventResponse);
 }
 
 message GetBaselineRequest {
@@ -47,6 +55,29 @@ message UpdateBaselineRequest {
 
 message UpdateBaselineResponse {
   Baseline baseline = 1;
+}
+
+message ScoreEventRequest {
+  string domain    = 1;
+  string entity_id = 2;
+  // Canonical enriched event as JSON — the same payload the deliberation
+  // judge sees. The service textualizes it with the SAME logic used to build
+  // the baseline, so the cosine comparison is apples-to-apples.
+  string enriched_event_json = 3;
+}
+
+message ScoreEventResponse {
+  // Behavioral anomaly score in [0, 1]: 0 = this event looks exactly like the
+  // entity's history, 1 = maximally deviant. Derived from cosine distance.
+  double anomaly_score     = 1;
+  // Cosine similarity of the event embedding to the rolling baseline, in
+  // [-1, 1]. Only meaningful when cold_start = false.
+  double cosine_similarity = 2;
+  // True when the entity has no baseline yet — no comparison was possible and
+  // anomaly_score is a neutral prior, not a measured deviation.
+  bool   cold_start        = 3;
+  // Number of events the baseline was built from (0 when cold_start).
+  int64  event_count       = 4;
 }
 
 message Baseline {

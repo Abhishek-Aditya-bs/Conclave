@@ -41,7 +41,18 @@ public class SchemaInitializer {
               + "  last_updated TIMESTAMPTZ NOT NULL,"
               + "  PRIMARY KEY (entity_id, domain)"
               + ")");
-        // Index on (domain, entity_id) is already the PK; no secondary index needed
-        // until we add similarity-search queries (deferred to a future module).
+        // The (entity_id, domain) PK already covers point lookups. ScoreEvent does a
+        // cosine comparison via pgvector's <=> operator; add an HNSW cosine index so
+        // that — and any future peer nearest-neighbour search — stays fast as the
+        // table grows. Tolerate older pgvector builds without HNSW: the comparison
+        // itself works without the index, just slower at scale.
+        try {
+            jdbc.execute(
+                    "CREATE INDEX IF NOT EXISTS baselines_embedding_cosine_idx "
+                  + "ON baselines USING hnsw (embedding vector_cosine_ops)");
+        } catch (RuntimeException e) {
+            LOG.warn("Could not create HNSW cosine index (pgvector >= 0.5 needed); "
+                   + "ScoreEvent still works, just without ANN acceleration: {}", e.getMessage());
+        }
     }
 }

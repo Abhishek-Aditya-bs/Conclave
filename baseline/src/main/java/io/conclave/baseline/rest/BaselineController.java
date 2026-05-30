@@ -45,8 +45,23 @@ public class BaselineController {
         return BaselineDto.from(updated);
     }
 
+    @PostMapping("/{domain}/{entityId}/score")
+    public ScoreDto score(@PathVariable String domain,
+                          @PathVariable String entityId,
+                          @RequestBody ScoreRequest request) {
+        BaselineService.ScoreResult r = service.score(domain, entityId, request.enrichedEventJson());
+        return new ScoreDto(r.anomalyScore(), r.cosineSimilarity(), r.coldStart(), r.eventCount());
+    }
+
     /** Request body for the POST endpoint. */
     public record UpdateRequest(String eventText) {}
+
+    /** Request body for the score endpoint — the enriched event as JSON. */
+    public record ScoreRequest(String enrichedEventJson) {}
+
+    /** JSON response for the score endpoint. */
+    public record ScoreDto(double anomalyScore, double cosineSimilarity,
+                           boolean coldStart, long eventCount) {}
 
     /** JSON response shape — flattens {@link Baseline} for wire stability. */
     public record BaselineDto(

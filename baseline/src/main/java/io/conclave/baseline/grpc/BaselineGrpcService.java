@@ -5,6 +5,8 @@ import io.conclave.baseline.proto.BaselineServiceGrpc;
 import io.conclave.baseline.proto.GetBaselineRequest;
 import io.conclave.baseline.proto.GetBaselineResponse;
 import io.conclave.baseline.proto.NotFound;
+import io.conclave.baseline.proto.ScoreEventRequest;
+import io.conclave.baseline.proto.ScoreEventResponse;
 import io.conclave.baseline.proto.UpdateBaselineRequest;
 import io.conclave.baseline.proto.UpdateBaselineResponse;
 import io.conclave.baseline.service.BaselineService;
@@ -58,6 +60,22 @@ public class BaselineGrpcService
                 request.getEventText());
         observer.onNext(UpdateBaselineResponse.newBuilder()
                 .setBaseline(toProto(updated))
+                .build());
+        observer.onCompleted();
+    }
+
+    @Override
+    public void scoreEvent(ScoreEventRequest request,
+                           StreamObserver<ScoreEventResponse> observer) {
+        BaselineService.ScoreResult result = service.score(
+                request.getDomain(),
+                request.getEntityId(),
+                request.getEnrichedEventJson());
+        observer.onNext(ScoreEventResponse.newBuilder()
+                .setAnomalyScore(result.anomalyScore())
+                .setCosineSimilarity(result.cosineSimilarity())
+                .setColdStart(result.coldStart())
+                .setEventCount(result.eventCount())
                 .build());
         observer.onCompleted();
     }

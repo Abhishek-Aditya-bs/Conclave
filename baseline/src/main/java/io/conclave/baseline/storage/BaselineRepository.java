@@ -19,6 +19,19 @@ public interface BaselineRepository {
     /** Insert-or-update — the natural key is {@code (entity_id, domain)}. */
     void save(Baseline baseline);
 
+    /**
+     * Cosine similarity of {@code vector} to the stored baseline for
+     * {@code (domain, entityId)}, computed in-database via pgvector's distance
+     * operator, plus the baseline's event count. This is the vector-similarity
+     * search backing {@code ScoreEvent}.
+     *
+     * @return empty if no baseline exists yet (cold-start entity).
+     */
+    Optional<ScoreLookup> scoreLookup(String domain, String entityId, float[] vector);
+
+    /** Result of {@link #scoreLookup}: cosine similarity in {@code [-1, 1]} + event count. */
+    record ScoreLookup(double cosineSimilarity, long eventCount) {}
+
     /** Test convenience: how many baselines are currently persisted. */
     long count();
 }

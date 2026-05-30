@@ -35,9 +35,21 @@ conclave:
     # EMA decay factor. New event weight = (1 - decay); existing baseline weight = decay.
     # 0.9 means the past dominates; 0.5 means new and old are 50/50; 0.0 means use the
     # latest event verbatim (no rolling). Tuned empirically against synthetic streams.
+    #
+    # Effective memory ≈ 1 / (1 - decay) events: 0.85 ≈ 7 events, 0.95 ≈ 20, 0.98 ≈ 50.
+    # Pick it to match the entity's event cadence over the window you want the baseline
+    # to "remember" (e.g. for ~1 event/day and a ~3-week memory, use ~0.95). Scoring
+    # (ScoreEvent) is read-only and never folds the scored event back in, so the
+    # baseline is not polluted by the very events it is judging.
     ema-decay: 0.85
     # Embedding dimension. Must match the langchain4j model (MiniLM-L6-v2 = 384).
     embedding-dim: 384
+    # Anomaly score ScoreEvent returns for an entity with no baseline yet (no history to
+    # compare against). Neutral-ish prior; the judge treats it as mild risk.
+    cold-start-score: 0.5
+    # Cosine DISTANCE (1 - cosine similarity) at which ScoreEvent's anomaly score
+    # saturates to 1.0. 0.5 ⇒ an event ≥ 0.5 away in cosine distance is fully anomalous.
+    score-max-distance: 0.5
 
 management:
   endpoints:

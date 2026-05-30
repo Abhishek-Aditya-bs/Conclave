@@ -34,6 +34,13 @@ public class JdbcBaselineRepository implements BaselineRepository {
           + "  event_count = EXCLUDED.event_count, "
           + "  last_updated = EXCLUDED.last_updated";
 
+    // pgvector's <=> is cosine DISTANCE, so cosine similarity = 1 - distance. The
+    // comparison happens in-database (genuine vector-similarity search) rather than
+    // pulling the 384-float vector back over JDBC to compare in Java.
+    private static final String SCORE_LOOKUP_SQL =
+            "SELECT event_count, (1 - (embedding <=> ?::vector)) AS cosine "
+          + "FROM baselines WHERE domain = ? AND entity_id = ?";
+
     private static final RowMapper<Baseline> ROW_MAPPER = JdbcBaselineRepository::mapRow;
 
     private final JdbcTemplate jdbc;
@@ -60,6 +67,19 @@ public class JdbcBaselineRepository implements BaselineRepository {
                 formatVector(baseline.embedding()),
                 baseline.eventCount(),
                 Timestamp.from(baseline.lastUpdated()));
+    }
+
+    @Override
+    public Optional<ScoreLookup> scoreLookup(String domain, String entityId, float[] vector) {
+        try {
+            ScoreLookup result = jdbc.queryForObject(
+                    SCORE_LOOKUP_SQL,
+                    (rs, rowNum) -> new ScoreLookup(rs.getDouble("cosine"), rs.getLong("event_count")),
+                    formatVector(vector), domain, entityId);
+            return Optional.ofNullable(result);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
     }
 
     @Override

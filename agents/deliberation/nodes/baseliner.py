@@ -13,9 +13,13 @@ from typing import Any
 import grpc
 
 from deliberation.clients import BaselineClient
-from deliberation.state import DeliberationState
+from deliberation.state import BaselineFinding, DeliberationState
 
 _LOG = logging.getLogger(__name__)
+
+# all-MiniLM-L6-v2 backing in M3. Surfaced to the judge prompt; the vector
+# itself lives in M3 — the agent never holds it.
+_EMBEDDING_DIM = 384
 
 
 def make_baseliner_node(client: BaselineClient | None):
@@ -41,9 +45,24 @@ def make_baseliner_node(client: BaselineClient | None):
                 "baseline_finding": None,
                 "errors": ["baseliner: empty baseline_entity_id"],
             }
+        enriched_event_json = state.get("enriched_event_json", "")
 
         try:
-            finding = client.get_baseline(domain=domain, entity_id=entity_id)
+            score = client.score_event(
+                domain=domain,
+                entity_id=entity_id,
+                enriched_event_json=enriched_event_json,
+            )
+            finding = BaselineFinding(
+                entity_id=entity_id,
+                domain=domain,
+                is_cold_start=score.cold_start,
+                event_count=score.event_count,
+                embedding_dim=0 if score.cold_start else _EMBEDDING_DIM,
+                cosine_similarity=None if score.cold_start else score.cosine_similarity,
+                anomaly_score=score.anomaly_score,
+                note="no baseline yet (cold-start entity)" if score.cold_start else "",
+            )
             return {"baseline_finding": finding}
         except grpc.RpcError as exc:
             code = getattr(exc, "code", lambda: None)()

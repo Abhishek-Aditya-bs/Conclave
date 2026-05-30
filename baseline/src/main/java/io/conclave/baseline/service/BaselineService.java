@@ -1,12 +1,18 @@
 package io.conclave.baseline.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.conclave.baseline.config.BaselineProperties;
 import io.conclave.baseline.domain.Baseline;
 import io.conclave.baseline.embedding.EmbeddingService;
+import io.conclave.baseline.ingest.BaselineText;
 import io.conclave.baseline.storage.BaselineRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +39,13 @@ public class BaselineService {
 
     private static final Logger LOG = LoggerFactory.getLogger(BaselineService.class);
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final BaselineRepository repository;
     private final EmbeddingService embedder;
     private final double decay;
+    private final double coldStartScore;
+    private final double scoreMaxDistance;
     private final Clock clock;
 
     @Autowired
@@ -53,6 +63,8 @@ public class BaselineService {
         this.repository = repository;
         this.embedder = embedder;
         this.decay = properties.emaDecay();
+        this.coldStartScore = properties.coldStartScore();
+        this.scoreMaxDistance = properties.scoreMaxDistance();
         this.clock = clock;
         if (embedder.dimensions() != properties.embeddingDim()) {
             throw new IllegalStateException(
@@ -77,6 +89,54 @@ public class BaselineService {
                 domain, entityId, updated.eventCount());
         return updated;
     }
+
+    /**
+     * Score an event against the entity's existing baseline WITHOUT mutating it.
+     *
+     * <p>Textualizes the enriched event the same way {@link #update} does (via
+     * {@link BaselineText}), embeds it, and compares it to the stored baseline using
+     * pgvector cosine similarity. The anomaly score is the cosine distance scaled so it
+     * saturates to 1.0 at {@code score-max-distance}. Cold-start entities (no baseline
+     * yet) get a neutral prior — there is nothing to compare against.
+     *
+     * <p>This is deliberately read-only: the event being judged is never folded back into
+     * the baseline, so a fraudulent event can't poison the profile it is scored against.
+     */
+    public ScoreResult score(String domain, String entityId, String enrichedEventJson) {
+        String text = BaselineText.of(domain, jsonAccessor(enrichedEventJson));
+        float[] fresh = embedder.embed(text);
+        Optional<BaselineRepository.ScoreLookup> lookup =
+                repository.scoreLookup(domain, entityId, fresh);
+        if (lookup.isEmpty()) {
+            return new ScoreResult(coldStartScore, 0.0, true, 0L);
+        }
+        double cosine = lookup.get().cosineSimilarity();
+        double distance = Math.max(0.0, 1.0 - cosine);
+        double anomaly = Math.min(1.0, distance / scoreMaxDistance);
+        return new ScoreResult(anomaly, cosine, false, lookup.get().eventCount());
+    }
+
+    /** Parse the enriched-event JSON into a field accessor for {@link BaselineText}. */
+    private static Function<String, Object> jsonAccessor(String json) {
+        if (json == null || json.isBlank()) {
+            return key -> null;
+        }
+        try {
+            Map<String, Object> map = MAPPER.readValue(json, new TypeReference<>() {});
+            return map::get;
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(
+                    "enriched_event_json is not valid JSON: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Outcome of {@link #score}: a behavioral anomaly score in {@code [0, 1]}, the raw
+     * cosine similarity to the baseline ({@code [-1, 1]}; 0 when cold-start), whether the
+     * entity was cold-start, and how many events the baseline was built from.
+     */
+    public record ScoreResult(double anomalyScore, double cosineSimilarity,
+                              boolean coldStart, long eventCount) {}
 
     private Baseline applyEma(Baseline prev, float[] fresh) {
         float[] merged = new float[fresh.length];

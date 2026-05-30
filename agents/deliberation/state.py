@@ -117,12 +117,31 @@ class BaselineFinding:
     event_count: int
     embedding_dim: int  # 384 for the all-MiniLM-L6-v2 backing
     last_updated_epoch_ms: int = 0
-    # Optional similarity score against a freshly-encoded event-text vector.
-    # Populated by the baseliner node when it has both vectors; the judge
-    # reads it as "how much does this event look like the entity's history".
+    # Cosine similarity of the current event's embedding to the entity's rolling
+    # baseline ([-1, 1]). Populated by the baseliner node from M3's ScoreEvent;
+    # the judge reads it as "how much does this event look like the entity's
+    # history". None when M3 was not consulted or the entity is cold-start.
     cosine_similarity: float | None = None
+    # Behavioral anomaly score in [0, 1] from M3's ScoreEvent (0 = matches the
+    # entity's history, 1 = maximally deviant). None when M3 was not consulted.
+    anomaly_score: float | None = None
     # Free-form note the baseliner can emit (e.g. "M3 unreachable, degraded").
     note: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class BaselineScore:
+    """Result of M3's ScoreEvent RPC.
+
+    Returned by ``BaselineClient.score_event``; the baseliner node folds it into
+    a ``BaselineFinding``. ``cosine_similarity`` is only meaningful when
+    ``cold_start`` is False.
+    """
+
+    anomaly_score: float
+    cosine_similarity: float
+    cold_start: bool
+    event_count: int
 
 
 @dataclass(frozen=True, slots=True)

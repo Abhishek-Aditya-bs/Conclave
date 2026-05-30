@@ -14,16 +14,16 @@ from deliberation.clients import BaselineClient, GraphClient
 from deliberation.graph import build_graph
 from deliberation.llm.provider import JudgeOutput
 from deliberation.state import (
-    BaselineFinding,
+    BaselineScore,
     ContributingFactor,
     GraphFinding,
     VerdictLabel,
 )
 
 
-def _make_clients(*, baseline_finding, graph_finding):
+def _make_clients(*, baseline_score, graph_finding):
     baseline_client = MagicMock(spec=BaselineClient)
-    baseline_client.get_baseline.return_value = baseline_finding
+    baseline_client.score_event.return_value = baseline_score
     graph_client = MagicMock(spec=GraphClient)
     graph_client.execute_template.return_value = graph_finding
     return baseline_client, graph_client
@@ -47,12 +47,11 @@ def _make_provider(name: str, model: str, *, score: float, label: VerdictLabel):
 class TestE2EAnthropic:
     def test_fraud_block_decision(self, fraud_event_json):
         baseline_client, graph_client = _make_clients(
-            baseline_finding=BaselineFinding(
-                entity_id="cardholder-9",
-                domain="fraud",
-                is_cold_start=False,
+            baseline_score=BaselineScore(
+                anomaly_score=0.15,
+                cosine_similarity=0.90,
+                cold_start=False,
                 event_count=120,
-                embedding_dim=384,
             ),
             graph_finding=GraphFinding(
                 template_name="fraud_card_testing_ring",
@@ -100,13 +99,11 @@ class TestE2EAnthropic:
 class TestE2EOllama:
     def test_security_review_decision(self, security_event_json):
         baseline_client, graph_client = _make_clients(
-            baseline_finding=BaselineFinding(
-                entity_id="alice@corp",
-                domain="security",
-                is_cold_start=True,
+            baseline_score=BaselineScore(
+                anomaly_score=0.5,
+                cosine_similarity=0.0,
+                cold_start=True,
                 event_count=0,
-                embedding_dim=0,
-                note="no baseline yet (cold-start entity)",
             ),
             graph_finding=GraphFinding(
                 template_name="security_lateral_movement",
@@ -149,7 +146,7 @@ class TestE2EDegradation:
         baseline_client = MagicMock(spec=BaselineClient)
         rpc_err = grpc.RpcError()
         rpc_err.code = lambda: grpc.StatusCode.UNAVAILABLE  # type: ignore[method-assign]
-        baseline_client.get_baseline.side_effect = rpc_err
+        baseline_client.score_event.side_effect = rpc_err
 
         graph_client = MagicMock(spec=GraphClient)
         graph_client.execute_template.side_effect = rpc_err

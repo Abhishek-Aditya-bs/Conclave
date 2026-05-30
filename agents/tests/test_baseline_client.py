@@ -4,6 +4,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import grpc
+import pytest
 
 from deliberation._proto import baseline_pb2
 from deliberation.clients import BaselineClient
@@ -49,6 +50,33 @@ class TestBaselineClient:
         assert finding.event_count == 0
         assert finding.embedding_dim == 0
         assert "cold-start" in finding.note
+
+    def test_score_event_translates_response(self):
+        stub = MagicMock()
+        stub.ScoreEvent.return_value = baseline_pb2.ScoreEventResponse(
+            anomaly_score=0.22,
+            cosine_similarity=0.78,
+            cold_start=False,
+            event_count=9,
+        )
+        with patch(
+            "deliberation.clients.baseline_client.baseline_pb2_grpc.BaselineServiceStub",
+            return_value=stub,
+        ):
+            client = BaselineClient(target="ignored", channel=MagicMock())
+            score = client.score_event(
+                domain="fraud",
+                entity_id="c-9",
+                enriched_event_json='{"amountMinor": 5000}',
+            )
+
+        assert score.anomaly_score == pytest.approx(0.22)
+        assert score.cosine_similarity == pytest.approx(0.78)
+        assert score.cold_start is False
+        assert score.event_count == 9
+        # The enriched JSON is forwarded verbatim for M3 to textualize + embed.
+        sent = stub.ScoreEvent.call_args.args[0]
+        assert sent.enriched_event_json == '{"amountMinor": 5000}'
 
     def test_passes_timeout_to_stub(self):
         stub = MagicMock()

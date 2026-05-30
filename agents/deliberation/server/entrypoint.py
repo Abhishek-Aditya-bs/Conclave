@@ -5,6 +5,11 @@ server. Designed to be the PID-1 in a container.
 
 Env vars:
   * ``DELIBERATION_PORT``        — default 9093
+  * ``DELIBERATION_HOST``        — bind address, default 0.0.0.0 (all
+                                   interfaces, required so the orchestrator can
+                                   reach this server across the compose
+                                   network). Set 127.0.0.1 for a local-only
+                                   bind when running on a workstation.
   * ``BASELINE_SERVICE_TARGET``  — default localhost:9091 (matches M3's
                                    default gRPC port)
   * ``GRAPH_SERVICE_TARGET``     — default localhost:9092 (matches M4)
@@ -39,6 +44,12 @@ def main() -> int:  # pragma: no cover — exercised manually + by e2e harness
     )
 
     port = int(os.environ.get("DELIBERATION_PORT", "9093"))
+    # Bind address is configurable rather than hardcoded. Default stays 0.0.0.0
+    # because the orchestrator reaches this gRPC server across the compose
+    # network — a 127.0.0.1 bind would refuse those cross-container connections.
+    # Override DELIBERATION_HOST=127.0.0.1 to expose only on the loopback when
+    # running the server directly on a host.
+    host = os.environ.get("DELIBERATION_HOST", "0.0.0.0")
     baseline_target = os.environ.get("BASELINE_SERVICE_TARGET", "localhost:9091")
     graph_target = os.environ.get("GRAPH_SERVICE_TARGET", "localhost:9092")
 
@@ -59,7 +70,7 @@ def main() -> int:  # pragma: no cover — exercised manually + by e2e harness
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=16))
     deliberation_pb2_grpc.add_DeliberationServiceServicer_to_server(servicer, server)
-    listen_addr = f"0.0.0.0:{port}"
+    listen_addr = f"{host}:{port}"
     server.add_insecure_port(listen_addr)
 
     server.start()

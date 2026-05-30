@@ -178,6 +178,11 @@ def build_user_prompt(judge_input: JudgeInput, *, domain: str) -> str:
                 f"Cosine similarity of current event to rolling baseline: "
                 f"{b.cosine_similarity:.3f}."
             )
+        if b.anomaly_score is not None:
+            parts.append(
+                f"Behavioral anomaly score (0=matches history, 1=deviant): "
+                f"{b.anomaly_score:.3f}."
+            )
         if b.note:
             parts.append(f"Note: {b.note}")
 
@@ -330,15 +335,34 @@ def derive_fallback_decision(judge_input: JudgeInput, *, domain: str) -> JudgeOu
                 )
             )
 
-    if judge_input.baseline_finding is not None and judge_input.baseline_finding.is_cold_start:
+    b = judge_input.baseline_finding
+    if b is not None and b.is_cold_start:
         score = max(score, 0.35)
         factors.append(
             ContributingFactor(
                 name="behavioral_cold_start",
                 weight=0.25,
                 evidence=(
-                    f"Entity '{judge_input.baseline_finding.entity_id}' has no "
-                    f"behavioral baseline (cold-start)."
+                    f"Entity '{b.entity_id}' has no behavioral baseline (cold-start)."
+                ),
+            )
+        )
+    elif b is not None and b.anomaly_score is not None:
+        # Cosine-based behavioral deviation drives the no-LLM fallback too, so the
+        # similarity signal still shapes the decision when the judge is unavailable.
+        score = max(score, b.anomaly_score)
+        cosine_note = (
+            f", cosine={b.cosine_similarity:.2f}"
+            if b.cosine_similarity is not None
+            else ""
+        )
+        factors.append(
+            ContributingFactor(
+                name="behavioral_anomaly",
+                weight=b.anomaly_score,
+                evidence=(
+                    f"Event deviates from entity '{b.entity_id}' baseline: "
+                    f"anomaly={b.anomaly_score:.2f}{cosine_note}."
                 ),
             )
         )

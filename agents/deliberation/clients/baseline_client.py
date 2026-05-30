@@ -13,7 +13,7 @@ from types import TracebackType
 import grpc
 
 from deliberation._proto import baseline_pb2, baseline_pb2_grpc
-from deliberation.state import BaselineFinding
+from deliberation.state import BaselineFinding, BaselineScore
 
 # spec §6 M3: p99 lookup < 20ms; we keep an order-of-magnitude headroom
 # so legit slowness still resolves, but a stuck server is short-circuited
@@ -87,4 +87,28 @@ class BaselineClient(AbstractContextManager["BaselineClient"]):
             event_count=baseline.event_count,
             embedding_dim=len(baseline.embedding),
             last_updated_epoch_ms=baseline.last_updated_epoch_ms,
+        )
+
+    def score_event(
+        self, domain: str, entity_id: str, enriched_event_json: str
+    ) -> BaselineScore:
+        """Score an event against ``entity_id``'s rolling baseline.
+
+        M3 textualizes + embeds the event and compares it to the stored
+        baseline via pgvector cosine similarity, returning a behavioral
+        deviation score. Read-only — the baseline is not mutated. gRPC
+        errors propagate to the caller; the baseliner node catches them and
+        degrades to "no behavioral signal".
+        """
+        request = baseline_pb2.ScoreEventRequest(
+            domain=domain,
+            entity_id=entity_id,
+            enriched_event_json=enriched_event_json,
+        )
+        response = self._stub.ScoreEvent(request, timeout=self._timeout)
+        return BaselineScore(
+            anomaly_score=response.anomaly_score,
+            cosine_similarity=response.cosine_similarity,
+            cold_start=response.cold_start,
+            event_count=response.event_count,
         )
