@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * Spring Boot entrypoint for the CONCLAVE M4 Graph Reasoner Service.
+ * Spring Boot entrypoint for the CONCLAVE Graph Reasoner Service.
  *
  * <p>Exposes REST (port 8082) + gRPC (port 9092) over a shared
  * {@code GraphReasonerService}. Cypher templates are autowired as

@@ -3,7 +3,7 @@ package io.conclave.orchestrator.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Tunables for the M6 decision orchestrator. Bound from
+ * Tunables for the decision orchestrator. Bound from
  * {@code conclave.orchestrator.*} in YAML.
  *
  * <p>Fail-fast in the compact constructor — same pattern as
@@ -11,13 +11,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * pull in {@code spring-boot-starter-validation} for two scalar
  * validations.
  *
- * @param deliberationTarget gRPC target for the M5 deliberation service,
+ * @param deliberationTarget gRPC target for the deliberation service,
  *                           e.g. {@code dns:///localhost:9093} or {@code host:port}.
  * @param deliberationDeadlineMs per-call deadline in ms for the deliberation
- *                               RPC. p99 budget on the Anthropic backend is
- *                               600ms (spec §6 M5); 1500ms gives ~2.5×
- *                               headroom for one retry within the M6 750ms
- *                               end-to-end target.
+ *                               RPC. The LLM judge can take tens of seconds
+ *                               (local CPU Ollama: 60-90s; cloud models often
+ *                               &gt; 1.5s), so the default is 30s
+ *                               (overridable via {@code DELIBERATION_DEADLINE_MS}).
+ *                               A too-short deadline cancels the call before the
+ *                               judge responds, so no decision is persisted.
  * @param kafkaConsumerGroupId stable group id for the @KafkaListener; one
  *                             logical consumer per orchestrator deployment.
  * @param decisionsTopicPartitions partition count for the

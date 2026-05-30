@@ -4,7 +4,7 @@ We use the regular ``anthropic`` SDK (not the higher-level Claude Agent SDK
 wrapper) because the judge is a single LLM call producing a fixed-schema
 payload, not a multi-turn agent loop. Both wrappers go through the same
 ``api.anthropic.com`` endpoint and therefore draw equally from the
-Max-20x Agent SDK credit pool (spec §5 cost note).
+Max-20x Agent SDK credit pool.
 
 Structured output: we declare a single ``record_decision`` tool whose
 ``input_schema`` matches the Decision shape, then set

@@ -1,6 +1,6 @@
-"""Baseliner-node tests — mocked M3 gRPC client.
+"""Baseliner-node tests — mocked baseline gRPC client.
 
-The baseliner now calls M3's ScoreEvent (not GetBaseline): it scores the current
+The baseliner now calls ScoreEvent (not GetBaseline): it scores the current
 event against the entity's rolling baseline and surfaces the cosine similarity +
 anomaly score to the judge.
 """

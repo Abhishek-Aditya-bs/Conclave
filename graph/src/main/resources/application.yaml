@@ -1,4 +1,4 @@
-# M4 Graph Reasoner Service configuration.
+# Graph Reasoner Service configuration.
 
 spring:
   application:

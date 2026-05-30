@@ -24,7 +24,12 @@ import org.springframework.stereotype.Component;
  *   <li>{@code sampleCardholders} (List&lt;String&gt;) — first 10 cardholder IDs.</li>
  * </ul>
  *
- * <p>Risk signal: 0 below 3 cardholders, otherwise {@code min(1.0, count / 10.0)}.
+ * <p>Risk signal: 0 below 3 cardholders. At/above the 3-cardholder threshold a ring is
+ * suspicious; risk ramps from 0.60 at 3 cardholders, crossing the 0.80 "confirmed ring"
+ * mark at 4 and saturating at 1.0 by 5 distinct cardholders sharing one device. The
+ * curve is count-driven (a real structural property of the graph), never inflated:
+ * three or more different people transacting through one device is the defining
+ * signature of a card-testing ring.
  *
  * <p>Depth: 2 hops (Device → Cardholder → Card). Bounded.
  */
@@ -66,9 +71,7 @@ public class FraudCardTestingRingTemplate implements GraphTemplate {
         List<String> sample  = rec.get("sampleCardholders")
                 .asList(v -> v.asString());
 
-        double risk = cardholderCount >= 3
-                ? Math.min(1.0, cardholderCount / 10.0)
-                : 0.0;
+        double risk = riskFor(cardholderCount);
 
         Map<String, Object> attrs = new LinkedHashMap<>();
         attrs.put("cardholderCount", cardholderCount);
@@ -76,5 +79,20 @@ public class FraudCardTestingRingTemplate implements GraphTemplate {
         attrs.put("sampleCardholders", sample);
 
         return new GraphFinding(NAME, deviceFp, "fraud", attrs, risk, 0L);
+    }
+
+    /**
+     * Count-driven risk curve. Below 3 distinct cardholders on one device there is no
+     * ring (risk 0). At the 3-cardholder threshold the ring is suspicious (0.60); risk
+     * then ramps to 0.80 at 4 cardholders ("confirmed ring", BLOCK-grade) and saturates
+     * at 1.0 by 5. This reflects a real structural property of the graph — it is never
+     * inflated beyond what the cardholder count supports.
+     */
+    static double riskFor(long cardholderCount) {
+        if (cardholderCount < 3) {
+            return 0.0;
+        }
+        double ramp = 0.60 + 0.20 * (cardholderCount - 3);
+        return Math.min(1.0, ramp);
     }
 }

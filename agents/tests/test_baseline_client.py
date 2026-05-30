@@ -74,7 +74,7 @@ class TestBaselineClient:
         assert score.cosine_similarity == pytest.approx(0.78)
         assert score.cold_start is False
         assert score.event_count == 9
-        # The enriched JSON is forwarded verbatim for M3 to textualize + embed.
+        # The enriched JSON is forwarded verbatim for the baseline service to textualize + embed.
         sent = stub.ScoreEvent.call_args.args[0]
         assert sent.enriched_event_json == '{"amountMinor": 5000}'
 

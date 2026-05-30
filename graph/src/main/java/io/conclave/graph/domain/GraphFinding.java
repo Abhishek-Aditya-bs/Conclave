@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Structured payload returned by every {@link GraphTemplate}. The judge agent (M5)
+ * Structured payload returned by every {@link GraphTemplate}. The judge agent
  * consumes findings as one input among several when scoring an event.
  *
  * @param templateName   the {@link GraphTemplate#name()} that produced this finding.

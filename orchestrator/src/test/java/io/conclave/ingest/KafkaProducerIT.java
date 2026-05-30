@@ -31,7 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * End-to-end integration test for M1: publish 1000 PaymentEvents through the producer SDK,
+ * End-to-end integration test for the producer: publish 1000 PaymentEvents through the producer SDK,
  * consume them back off the broker, and assert that all 1000 event IDs arrive intact.
  *
  * <p>Uses Testcontainers Kafka in KRaft mode (multi-arch image, Apple Silicon-safe) and
@@ -39,8 +39,8 @@ import org.testcontainers.utility.DockerImageName;
  * container. The scope name is unique per test class so parallel test runs don't collide.
  */
 @Testcontainers
-// conclave.orchestrator.enabled=false drops the M6 slice (Postgres-backed
-// SchemaInitializer, DecisionConsumer, etc.) so M1's IT doesn't need a DB.
+// conclave.orchestrator.enabled=false drops the orchestrator slice (Postgres-backed
+// SchemaInitializer, DecisionConsumer, etc.) so this IT doesn't need a DB.
 @SpringBootTest(
         classes = ConclaveApplication.class,
         properties = "conclave.orchestrator.enabled=false")

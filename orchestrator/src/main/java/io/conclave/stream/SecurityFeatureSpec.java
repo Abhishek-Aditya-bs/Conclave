@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * M2 feature-extraction spec for the SOC configuration.
+ * Feature-extraction spec for the SOC configuration.
  *
  * <p>Computed features:
  * <ul>
@@ -31,8 +31,8 @@ import org.springframework.stereotype.Component;
  *       principalId.</li>
  *   <li>{@code failedLoginsRecent} — cumulative count of non-SUCCESS results for this
  *       principalId.</li>
- *   <li>{@code baselineEntityId} — the principalId, which M3 keys on.</li>
- *   <li>{@code graphEntityIds} — entities M4 considers: principal, host, source IP,
+ *   <li>{@code baselineEntityId} — the principalId, which the baseline service keys on.</li>
+ *   <li>{@code graphEntityIds} — entities the graph reasoner considers: principal, host, source IP,
  *       and target resource if present.</li>
  * </ul>
  *

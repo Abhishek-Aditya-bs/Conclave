@@ -9,7 +9,7 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 
 /**
- * Shared topology shell for the M2 feature-extraction job. Given a {@link FeatureSpec}, this
+ * Shared topology shell for the feature-extraction job. Given a {@link FeatureSpec}, this
  * builds a {@code Topology} that:
  *
  * <ol>

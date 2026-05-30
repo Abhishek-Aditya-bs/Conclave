@@ -7,7 +7,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.KStream;
 
 /**
- * Domain-agnostic contract for the M2 feature-extraction stream job (spec §6 M2).
+ * Domain-agnostic contract for the feature-extraction stream job.
  *
  * <p>The reference architecture promises "one architecture, two domains" — both the fraud
  * and SOC configurations boot from the same binary and the only per-domain code lives in
@@ -19,8 +19,8 @@ import org.apache.kafka.streams.kstream.KStream;
  * <p>Both the raw and enriched event types are Avro {@link SpecificRecord}s with their
  * schemas in {@code configs/{domain}/(enriched-)schema.avsc}.
  *
- * @param <R> raw event type — what producers in M1 emit (e.g. {@code PaymentEvent}).
- * @param <E> enriched event type — what M2 emits (e.g. {@code EnrichedPaymentEvent}).
+ * @param <R> raw event type — what producers emit (e.g. {@code PaymentEvent}).
+ * @param <E> enriched event type — what the job emits (e.g. {@code EnrichedPaymentEvent}).
  */
 public interface FeatureSpec<R extends SpecificRecord, E extends SpecificRecord> {
 

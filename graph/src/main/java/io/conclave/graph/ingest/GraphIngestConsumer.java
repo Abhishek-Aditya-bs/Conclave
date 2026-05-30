@@ -8,14 +8,14 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Populates Neo4j from the enriched event stream so the M4 templates have a graph to
+ * Populates Neo4j from the enriched event stream so the graph templates have a graph to
  * query. The graph service is domain-agnostic (it serves both fraud and security to
- * M5 at once), so this consumer subscribes to BOTH enriched topics and routes by the
+ * the judge at once), so this consumer subscribes to BOTH enriched topics and routes by the
  * Avro record type.
  *
- * <p>Asynchronous by design (spec decision): detection therefore has a real, measurable
+ * <p>Asynchronous by design: detection therefore has a real, measurable
  * latency — a ring/lateral campaign isn't visible until enough of its edges have landed.
- * That latency is a property the eval harness (Stage 4) reports, not a bug.
+ * That latency is a property the eval harness reports, not a bug.
  *
  * <p>Gated by {@code conclave.graph.ingest.enabled} (default on) so the template ITs,
  * which seed Neo4j directly and run without a broker, can switch it off.

@@ -1,6 +1,6 @@
 """End-to-end LangGraph invocation with all I/O mocked.
 
-This is the canonical "M5 done" assertion the spec asks for: given a
+This is the canonical "deliberation done" assertion: given a
 canned enriched event, the graph returns a Decision with all fields
 populated.
 """

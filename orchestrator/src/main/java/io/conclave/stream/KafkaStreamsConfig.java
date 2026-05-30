@@ -16,11 +16,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 
 /**
- * Spring wiring for the M2 feature-extraction Kafka Streams app.
+ * Spring wiring for the feature-extraction Kafka Streams app.
  *
  * <p>Builds the {@link Topology} from the active-profile {@link FeatureSpec}, constructs a
  * {@link KafkaStreams} instance from it, and starts it once the Spring context is ready
- * (so the broker config & topic auto-creation from M1 are in place before Streams polls).
+ * (so the broker config & topic auto-creation from the ingest layer are in place before Streams polls).
  *
  * <p>The {@code APPLICATION_ID_CONFIG} is derived from the domain so fraud and security
  * deployments don't share consumer groups or state stores.

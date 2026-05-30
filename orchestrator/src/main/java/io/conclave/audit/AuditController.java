@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <pre>
  *   GET  /api/v1/decisions                 — list (paginated)
  *   GET  /api/v1/decisions/{decisionId}    — detail
- *   POST /api/v1/decisions/{decisionId}/replay  — re-run M5 on stored evidence
+ *   POST /api/v1/decisions/{decisionId}/replay  — re-run the judge on stored evidence
  * </pre>
  *
  * <p>Query params on the list endpoint map onto {@link DecisionFilter}:

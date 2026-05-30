@@ -42,13 +42,13 @@ class EnrichedEventJsonEncoderTest {
 
         JsonNode json = mapper.readTree(encoder.encode(event));
 
-        // Field names match the Avro schema (camelCase) — same shape the M5
+        // Field names match the Avro schema (camelCase) — same shape the judge's
         // Python feature_node parses from agents/tests/conftest.py.
         assertThat(json.get("eventId").asText()).isEqualTo("evt-fraud-1");
         assertThat(json.get("amountMinor").asLong()).isEqualTo(12500L);
         assertThat(json.get("currency").asText()).isEqualTo("USD");
         // Timestamps come out as epoch millis, not ISO-8601 — matches the
-        // fixture expectations on the M5 side.
+        // fixture expectations on the judge side.
         assertThat(json.get("timestamp").asLong()).isEqualTo(1716624000000L);
         assertThat(json.get("featureExtractedAt").asLong()).isEqualTo(1716624000050L);
         // Optional union fields flatten — no {"string": "DE"} wrapper.
@@ -88,7 +88,7 @@ class EnrichedEventJsonEncoderTest {
 
         JsonNode json = mapper.readTree(encoder.encode(event));
         // Avro union [null, string] with value null serializes as JSON null,
-        // not as an Avro-style wrapper. M5 parses `event.get("shippingCountry")`
+        // not as an Avro-style wrapper. The judge parses `event.get("shippingCountry")`
         // → None which is the documented behavior.
         assertThat(json.get("shippingCountry").isNull()).isTrue();
         assertThat(json.get("graphEntityIds").isArray()).isTrue();

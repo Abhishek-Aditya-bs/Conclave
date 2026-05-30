@@ -1,4 +1,4 @@
-// CONCLAVE — M4 Graph Reasoner Service gRPC contract.
+// CONCLAVE — Graph Reasoner Service gRPC contract.
 //
 // Two RPCs: list_templates (discovery) and execute_template (the workhorse).
 //
@@ -10,7 +10,7 @@
 // because each template emits a different shape and we don't want every consumer
 // to depend on a frozen schema for every finding. Callers parse it with their
 // JSON library of choice. The risk_signal is a normalized [0, 1] hint that the
-// judge agent (M5) uses as one input among several.
+// judge agent uses as one input among several.
 syntax = "proto3";
 
 package io.conclave.graph.v1;

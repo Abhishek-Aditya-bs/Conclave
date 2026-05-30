@@ -168,7 +168,7 @@
                             <rules>
                                 <requireJavaVersion>
                                     <version>[25,26)</version>
-                                    <message>CONCLAVE requires Java 25 (per spec §5). Set JAVA_HOME=/opt/homebrew/opt/openjdk@25 on macOS or `sdk use java 25-tem`.</message>
+                                    <message>CONCLAVE requires Java 25 (per spec §5). The scripts (./scripts/test.sh, ./scripts/up.sh) resolve a JDK 25 automatically on macOS + Linux. For a raw `mvn`, set JAVA_HOME yourself — macOS: `JAVA_HOME=$(brew --prefix openjdk@25)`, Linux: install Temurin 25, or any OS: `sdk use java 25-tem`.</message>
                                 </requireJavaVersion>
                                 <requireMavenVersion>
                                     <version>[3.9.0,)</version>

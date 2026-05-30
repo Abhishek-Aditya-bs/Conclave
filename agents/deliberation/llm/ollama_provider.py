@@ -7,7 +7,7 @@ yet; ``format="json"`` is the lowest common denominator and forces the
 model to emit syntactically valid JSON. Validation is then done by our
 ``parse_decision_payload``.
 
-spec §5 caveats apply:
+Caveats apply:
   * Output quality varies by model; benchmarks must NOT be quoted from
     this path.
   * p99 < 600ms latency target does NOT apply.

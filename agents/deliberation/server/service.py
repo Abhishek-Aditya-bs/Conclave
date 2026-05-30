@@ -50,7 +50,7 @@ class DeliberationService(deliberation_pb2_grpc.DeliberationServiceServicer):
         request: deliberation_pb2.DeliberationRequest,
         context: grpc.ServicerContext,
     ) -> deliberation_pb2.DeliberationResponse:
-        # Defensive validation — the orchestrator (M6) should always send these.
+        # Defensive validation — the orchestrator should always send these.
         if not request.event_id:
             context.abort(grpc.StatusCode.INVALID_ARGUMENT, "event_id is required")
         if request.domain not in ("fraud", "security"):

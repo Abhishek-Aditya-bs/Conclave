@@ -1,4 +1,4 @@
-# M3 Baseline Service configuration.
+# Baseline Service configuration.
 
 spring:
   application:

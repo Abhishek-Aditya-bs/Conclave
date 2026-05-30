@@ -1,6 +1,6 @@
 """Judge-LLM abstraction layer.
 
-The judge node is the only piece of M5 that talks to an LLM. We hide
+The judge node is the only piece of the deliberation that talks to an LLM. We hide
 that behind ``LLMProvider`` so the rest of the graph (and the tests) are
 provider-agnostic — see ADR-004 for rationale.
 """

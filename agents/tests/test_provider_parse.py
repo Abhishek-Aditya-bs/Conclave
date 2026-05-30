@@ -158,8 +158,8 @@ class TestBuildUserPrompt:
             domain="fraud",
         )
         assert "Feature summary" in prompt
-        assert "Behavioral baseline (M3)" in prompt
-        assert "Graph reasoning (M4)" in prompt
+        assert "Behavioral baseline" in prompt
+        assert "Graph reasoning" in prompt
         # The structured findings get serialized in the prompt body.
         assert "cardholder_count" in prompt or "card_count" in prompt
         assert "fraud_card_testing_ring" in prompt
@@ -182,8 +182,8 @@ class TestBuildUserPrompt:
             JudgeInput(feature_summary=sample_feature_summary, baseline_finding=None, graph_finding=None),
             domain="fraud",
         )
-        assert "M3 unavailable" in prompt
-        assert "M4 unavailable" in prompt
+        assert "Baseline unavailable" in prompt
+        assert "Graph reasoning unavailable" in prompt
 
 
 class TestToDecision:

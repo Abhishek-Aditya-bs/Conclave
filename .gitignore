@@ -81,6 +81,9 @@ docker-data/
 .env
 *.local
 
+# PID of an Ollama server that scripts/up.sh started (read by scripts/down.sh).
+.conclave-ollama.pid
+
 # ---------- OS / scratch ----------
 *.swp
 *.swo
@@ -95,3 +98,14 @@ docker-data/
 /DESIGN.md
 /spec.md
 /docs/
+
+# ---------- LaTeX (paper build artifacts; keep .tex/.bbl/.pdf) ----------
+*.aux
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.toc
+*.bcf
+*.run.xml
+*.blg

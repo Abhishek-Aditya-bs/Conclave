@@ -1,4 +1,4 @@
-"""Thin sync wrapper around the M3 ``BaselineService`` gRPC stub.
+"""Thin sync wrapper around the ``BaselineService`` gRPC stub.
 
 We do not retry inside the client: the orchestrator node decides what to
 do on failure (degrade gracefully, mark cold-start, etc). The client only
@@ -7,6 +7,7 @@ deliberation.
 """
 from __future__ import annotations
 
+import os
 from contextlib import AbstractContextManager
 from types import TracebackType
 
@@ -15,14 +16,28 @@ import grpc
 from deliberation._proto import baseline_pb2, baseline_pb2_grpc
 from deliberation.state import BaselineFinding, BaselineScore
 
-# spec §6 M3: p99 lookup < 20ms; we keep an order-of-magnitude headroom
-# so legit slowness still resolves, but a stuck server is short-circuited
-# inside the 600ms deliberation budget.
-DEFAULT_TIMEOUT_SECONDS = 0.5
+# Baseline p99 lookup < 20ms, but the gRPC service can be slow on cold start
+# (a 0.5s deadline tripped DEADLINE_EXCEEDED on the first request). The default
+# is env-overridable via BASELINE_DEADLINE_MS (compose sets a generous 10s);
+# when unset we keep the historical 0.5s so existing behavior/tests are stable.
+_FALLBACK_TIMEOUT_SECONDS = 0.5
+
+
+def _default_timeout_seconds() -> float:
+    raw = os.environ.get("BASELINE_DEADLINE_MS")
+    if raw:
+        try:
+            return float(raw) / 1000.0
+        except ValueError:
+            pass
+    return _FALLBACK_TIMEOUT_SECONDS
+
+
+DEFAULT_TIMEOUT_SECONDS = _default_timeout_seconds()
 
 
 class BaselineClient(AbstractContextManager["BaselineClient"]):
-    """Sync gRPC client for M3.
+    """Sync gRPC client for the baseline service.
 
     Owns its channel; close via ``__exit__`` or ``.close()``. One client
     per server lifetime is the intended usage — channels are thread-safe
@@ -94,7 +109,7 @@ class BaselineClient(AbstractContextManager["BaselineClient"]):
     ) -> BaselineScore:
         """Score an event against ``entity_id``'s rolling baseline.
 
-        M3 textualizes + embeds the event and compares it to the stored
+        The baseline service textualizes + embeds the event and compares it to the stored
         baseline via pgvector cosine similarity, returning a behavioral
         deviation score. Read-only — the baseline is not mutated. gRPC
         errors propagate to the caller; the baseliner node catches them and

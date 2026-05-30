@@ -1,4 +1,4 @@
-// Wire types matching the M7 audit API (snake_case via Jackson SNAKE_CASE).
+// Wire types matching the audit API (snake_case via Jackson SNAKE_CASE).
 // Source of truth: orchestrator/src/main/java/io/conclave/audit/*.java
 // + ADR-006 (docs/adr/0006-audit-api-surface.md).
 

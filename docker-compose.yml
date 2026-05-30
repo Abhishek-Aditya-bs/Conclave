@@ -19,7 +19,7 @@
 # runs `mvn package` first). The agents service is built from its Dockerfile.
 #
 # Networking: services reach the broker as kafka:29092 (PLAINTEXT internal).
-# The host can reach the broker on localhost:9092 — that's what the M9
+# The host can reach the broker on localhost:9092 — that's what the
 # generators use when run from ./scripts/seed.sh.
 
 services:
@@ -73,8 +73,8 @@ services:
       retries: 30
 
   postgres:
-    # pgvector image is multi-arch (Apple Silicon-safe). Same image M3 + M6
-    # use under Testcontainers, so behavior matches the test suite.
+    # pgvector image is multi-arch (Apple Silicon-safe). Same image the baseline
+    # and orchestrator services use under Testcontainers, so behavior matches the test suite.
     image: pgvector/pgvector:pg16
     container_name: conclave-postgres
     ports:
@@ -177,6 +177,11 @@ services:
       DELIBERATION_PORT: "9093"
       BASELINE_SERVICE_TARGET: baseline:9091
       GRAPH_SERVICE_TARGET: graph:9092
+      # Per-call gRPC deadlines (ms) the deliberation graph applies to its
+      # baseline/graph lookups. Generous defaults so a cold-start service
+      # doesn't trip DEADLINE_EXCEEDED. Override per-deployment if needed.
+      BASELINE_DEADLINE_MS: ${BASELINE_DEADLINE_MS:-10000}
+      GRAPH_DEADLINE_MS: ${GRAPH_DEADLINE_MS:-10000}
       # Provider selection (see deliberation/llm/provider.py). The scripts wire
       # these for you:
       #   ./scripts/up.sh local   → JUDGE_LLM_PROVIDER=ollama (host Ollama / Gemma)
@@ -217,8 +222,13 @@ services:
       ORCHESTRATOR_DB_USER: conclave
       ORCHESTRATOR_DB_PASSWORD: conclave
       DELIBERATION_TARGET: agents:9093
+      # Per-call deadline for the deliberation (judge) gRPC call. The LLM judge
+      # can take tens of seconds; a too-short deadline cancels the call before
+      # the judge responds, so no decision is persisted. scripts/up.sh raises
+      # this to 180s for local CPU Ollama.
+      DELIBERATION_DEADLINE_MS: ${DELIBERATION_DEADLINE_MS:-30000}
     ports:
-      - "8080:8080"   # M7 audit API + actuator
+      - "8080:8080"   # audit API + actuator
 
 volumes:
   postgres-data:

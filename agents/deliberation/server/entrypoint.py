@@ -10,9 +10,9 @@ Env vars:
                                    reach this server across the compose
                                    network). Set 127.0.0.1 for a local-only
                                    bind when running on a workstation.
-  * ``BASELINE_SERVICE_TARGET``  — default localhost:9091 (matches M3's
-                                   default gRPC port)
-  * ``GRAPH_SERVICE_TARGET``     — default localhost:9092 (matches M4)
+  * ``BASELINE_SERVICE_TARGET``  — default localhost:9091 (matches the
+                                   baseline service's default gRPC port)
+  * ``GRAPH_SERVICE_TARGET``     — default localhost:9092 (matches the graph service)
   * ``JUDGE_LLM_PROVIDER``       — see deliberation.llm.provider
   * ``JUDGE_LLM_MODEL``          — see deliberation.llm.provider
   * ``ANTHROPIC_API_KEY``        — required when provider=anthropic

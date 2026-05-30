@@ -1,12 +1,13 @@
-"""Thin sync wrapper around the M4 ``GraphReasonerService`` gRPC stub.
+"""Thin sync wrapper around the ``GraphReasonerService`` gRPC stub.
 
-The M4 service offers ``ListTemplates`` (discovery) and ``ExecuteTemplate``
+The graph service offers ``ListTemplates`` (discovery) and ``ExecuteTemplate``
 (the workhorse). The deliberation graph picks the right template per
 domain — see ``deliberation/nodes/graph_reasoner.py``.
 """
 from __future__ import annotations
 
 import json
+import os
 from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Any
@@ -16,14 +17,28 @@ import grpc
 from deliberation._proto import graph_pb2, graph_pb2_grpc
 from deliberation.state import GraphFinding
 
-# spec §6 M4: p99 < 50ms; 1s timeout is generous against a healthy server
-# yet still fits comfortably inside the 600ms deliberation budget when
-# combined with the M3 lookup running in parallel.
-DEFAULT_TIMEOUT_SECONDS = 1.0
+# Graph p99 < 50ms, but the gRPC service can be slow on cold start, so the
+# deadline must leave headroom. The default is env-overridable via
+# GRAPH_DEADLINE_MS (compose sets a generous 10s); when unset we keep the
+# historical 1.0s so existing behavior/tests are stable.
+_FALLBACK_TIMEOUT_SECONDS = 1.0
+
+
+def _default_timeout_seconds() -> float:
+    raw = os.environ.get("GRAPH_DEADLINE_MS")
+    if raw:
+        try:
+            return float(raw) / 1000.0
+        except ValueError:
+            pass
+    return _FALLBACK_TIMEOUT_SECONDS
+
+
+DEFAULT_TIMEOUT_SECONDS = _default_timeout_seconds()
 
 
 class GraphClient(AbstractContextManager["GraphClient"]):
-    """Sync gRPC client for M4."""
+    """Sync gRPC client for the graph service."""
 
     def __init__(
         self,
@@ -74,7 +89,7 @@ class GraphClient(AbstractContextManager["GraphClient"]):
             return None
 
         finding = response.finding
-        # The proto attributes are a JSON string per M4's contract (see
+        # The proto attributes are a JSON string per the graph service's contract (see
         # graph.proto for why a Struct was rejected).
         attributes: dict[str, Any]
         try:

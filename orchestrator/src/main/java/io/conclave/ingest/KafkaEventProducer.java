@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 /**
  * Default {@link EventProducer} implementation backed by Spring's {@link KafkaTemplate}.
  *
- * <p>Key derivation: every M1 Avro schema includes a top-level {@code eventId} string field
+ * <p>Key derivation: every Avro schema includes a top-level {@code eventId} string field
  * (see {@code configs/fraud/schema.avsc} and {@code configs/security/schema.avsc}). This
  * producer looks the field up by name on the record's schema once per send. If the field is
  * missing the producer fails fast — that situation indicates a schema regression worth

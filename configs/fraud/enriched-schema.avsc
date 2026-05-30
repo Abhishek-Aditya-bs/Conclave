@@ -2,7 +2,7 @@
   "type": "record",
   "name": "EnrichedPaymentEvent",
   "namespace": "io.conclave.events.fraud",
-  "doc": "Output of the M2 feature-extraction stream job for the fraud configuration. Carries all PaymentEvent fields forward + the per-event features the deliberation graph (M5) and downstream agents (M3 behavioral baseliner, M4 graph reasoner) consume. Channel is serialized as its string symbol to avoid cross-record enum coupling.",
+  "doc": "Output of the feature-extraction stream job for the fraud configuration. Carries all PaymentEvent fields forward + the per-event features the deliberation graph and downstream agents (behavioral baseliner, graph reasoner) consume. Channel is serialized as its string symbol to avoid cross-record enum coupling.",
   "fields": [
     {"name": "eventId", "type": "string", "doc": "Stable event identifier, propagated from the raw PaymentEvent."},
     {"name": "timestamp", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Original event-time of the underlying transaction (UTC ms)."},
@@ -20,10 +20,10 @@
     {"name": "cardPresent", "type": "boolean"},
     {"name": "channel", "type": "string", "doc": "Channel enum symbol (WEB | MOBILE | API | OTHER) carried forward as a string."},
 
-    {"name": "cardholderVelocity", "type": "long", "doc": "Cumulative count of PaymentEvents seen for this cardholderId on this topology instance, *including* the current event. Window-based velocity (rolling 60s, 24h) is deferred until M9 provides multi-day generators — see SCRATCHPAD."},
+    {"name": "cardholderVelocity", "type": "long", "doc": "Cumulative count of PaymentEvents seen for this cardholderId on this topology instance, *including* the current event. Window-based velocity (rolling 60s, 24h) is deferred until multi-day generators are available — see SCRATCHPAD."},
     {"name": "binRiskScore", "type": "double", "doc": "Deterministic synthetic risk score in [0, 1) derived from the BIN. Placeholder; real BIN intelligence belongs in a side-input topic the topology can KTable-join against."},
-    {"name": "baselineEntityId", "type": "string", "doc": "Identifier the M3 behavioral baseline service should be keyed on for this event. For the fraud config this is the cardholderId."},
-    {"name": "graphEntityIds", "type": {"type": "array", "items": "string"}, "doc": "Distinct node identifiers from this event that the M4 graph reasoner should consider: cardholderId, deviceFingerprint, ipAddress, merchantId. Cards (tokens) are intentionally omitted — they sit one hop away from cardholders in the graph schema."},
-    {"name": "featureExtractedAt", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Wall-clock ms at which the M2 topology emitted this enriched event. Used for end-to-end latency tracking."}
+    {"name": "baselineEntityId", "type": "string", "doc": "Identifier the behavioral baseline service should be keyed on for this event. For the fraud config this is the cardholderId."},
+    {"name": "graphEntityIds", "type": {"type": "array", "items": "string"}, "doc": "Distinct node identifiers from this event that the graph reasoner should consider: cardholderId, deviceFingerprint, ipAddress, merchantId. Cards (tokens) are intentionally omitted — they sit one hop away from cardholders in the graph schema."},
+    {"name": "featureExtractedAt", "type": {"type": "long", "logicalType": "timestamp-millis"}, "doc": "Wall-clock ms at which the feature-extraction topology emitted this enriched event. Used for end-to-end latency tracking."}
   ]
 }

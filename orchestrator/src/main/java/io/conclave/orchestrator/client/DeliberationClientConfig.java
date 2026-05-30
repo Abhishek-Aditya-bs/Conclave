@@ -33,7 +33,7 @@ public class DeliberationClientConfig {
     @Bean(destroyMethod = "shutdown")
     public ManagedChannel deliberationChannel(DecisionOrchestratorProperties properties) {
         String target = properties.deliberationTarget();
-        LOG.info("Building gRPC channel to M5 deliberation service at {}", target);
+        LOG.info("Building gRPC channel to deliberation service at {}", target);
         // forTarget accepts "host:port" or "dns:///host:port" — the latter is
         // preferred for clustered deployments but the demo uses bare host:port.
         return ManagedChannelBuilder.forTarget(target)

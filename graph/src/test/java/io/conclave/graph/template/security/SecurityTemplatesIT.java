@@ -92,8 +92,9 @@ class SecurityTemplatesIT {
         assertThat(found).isPresent();
         GraphFinding f = found.get();
         assertThat(f.attributes().get("hostCount")).isEqualTo(6L);
-        // risk = min(1.0, 6 / 20.0) = 0.3
-        assertThat(f.riskSignal()).isEqualTo(0.3);
+        // 6 distinct hosts is a clear lateral-movement campaign; the count-driven curve
+        // (0.60 at 5, +0.20/host) gives 0.80 at 6 → BLOCK-grade.
+        assertThat(f.riskSignal()).isEqualTo(0.80);
         assertThat(f.attributes().get("sampleHosts")).isInstanceOf(java.util.List.class);
     }
 

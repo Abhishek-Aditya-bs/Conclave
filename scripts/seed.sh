@@ -11,8 +11,33 @@
 #   ./scripts/seed.sh security --clean 500 --rings 2 --ato 1 --extra 1
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
 
-DOMAIN="${1:-fraud}"
-shift || true
+# Capture the domain arg without defaulting yet, so we can tell whether the
+# caller passed it. Arg present → use it directly with NO prompt (keeps
+# `up.sh`'s suggestion `seed.sh <domain>` and CI fully non-interactive).
+DOMAIN="${1:-}"
+if [ "$#" -gt 0 ]; then shift; fi
+
+# --- domain: prompt only if missing AND stdin is a TTY; else default to fraud --
+if [ -z "$DOMAIN" ]; then
+  if [ -t 0 ]; then
+    while [ -z "$DOMAIN" ]; do
+      echo "Select domain:"
+      echo "  1) fraud"
+      echo "  2) security"
+      read -rp "Choice [1]: " _domain_choice
+      _domain_choice="${_domain_choice:-1}"
+      case "$_domain_choice" in
+        1) DOMAIN="fraud" ;;
+        2) DOMAIN="security" ;;
+        *) warn "Invalid choice, try again" ;;
+      esac
+    done
+  else
+    DOMAIN="fraud"
+    info "No domain arg and stdin is not a TTY → defaulting to domain=fraud"
+  fi
+fi
+
 case "$DOMAIN" in fraud|security) ;; *) die "domain must be 'fraud' or 'security' (got '$DOMAIN')";; esac
 
 # Point the generator at the live broker + registry exposed by docker-compose.
@@ -22,7 +47,7 @@ export SCHEMA_REGISTRY_URL="${SCHEMA_REGISTRY_URL:-http://localhost:8085}"
 if [ "$DOMAIN" = "fraud" ]; then
   MAIN="io.conclave.generators.fraud.FraudGeneratorMain"
   # Multi-day population (40 customers × 14 days × 3/day) builds real per-customer
-  # baselines BEFORE the adversarial campaigns deviate from them — so the M3
+  # baselines BEFORE the adversarial campaigns deviate from them — so the
   # cosine-similarity score has converged history to compare against.
   DEFAULT_ARGS="--customers 40 --days 14 --events-per-day 3 --distribution mix --clean 200 --rings 2 --ato 1 --extra 1"
 else

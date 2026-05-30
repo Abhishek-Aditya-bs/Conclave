@@ -25,7 +25,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * gRPC integration test. Same shape as M3's {@code BaselineGrpcIT}; pins the gRPC
+ * gRPC integration test. Same shape as the baseline module's {@code BaselineGrpcIT}; pins the gRPC
  * port to a known value and connects a blocking stub.
  */
 @Testcontainers

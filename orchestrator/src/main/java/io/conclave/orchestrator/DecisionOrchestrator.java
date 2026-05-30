@@ -21,8 +21,8 @@ import org.springframework.stereotype.Service;
  * End-to-end workflow per enriched event:
  *
  * <pre>
- * 1. translate enriched-event Avro → M5 DeliberationRequest (JSON in proto)
- * 2. call M5 over gRPC, get a Decision
+ * 1. translate enriched-event Avro → DeliberationRequest (JSON in proto)
+ * 2. call the judge over gRPC, get a Decision
  * 3. persist the Decision to Postgres
  * 4. emit the Decision on decisions.{domain}
  * </pre>
@@ -32,10 +32,10 @@ import org.springframework.stereotype.Service;
  * <ul>
  *   <li>Translation errors (malformed enriched event) →
  *       {@link FailureReason#TRANSLATION_FAILURE}.</li>
- *   <li>M5 timeout (gRPC {@code DEADLINE_EXCEEDED}) →
+ *   <li>Judge timeout (gRPC {@code DEADLINE_EXCEEDED}) →
  *       {@link FailureReason#M5_TIMEOUT}.</li>
- *   <li>M5 unreachable ({@code UNAVAILABLE}) → {@link FailureReason#M5_UNAVAILABLE}.</li>
- *   <li>M5 internal error → {@link FailureReason#M5_INTERNAL}.</li>
+ *   <li>Judge unreachable ({@code UNAVAILABLE}) → {@link FailureReason#M5_UNAVAILABLE}.</li>
+ *   <li>Judge internal error → {@link FailureReason#M5_INTERNAL}.</li>
  *   <li>Postgres write failure → {@link FailureReason#PERSISTENCE_FAILURE}.
  *       At this point the Decision has been produced but not stored — we
  *       still emit on {@code decisions.{domain}} for downstream consumers
@@ -91,20 +91,20 @@ public class DecisionOrchestrator {
             return;
         }
 
-        // 2. Call M5.
+        // 2. Call the judge.
         DecisionRecord decision;
         try {
             decision = deliberationClient.deliberate(request);
         } catch (StatusRuntimeException exc) {
             FailureReason reason = classify(exc.getStatus());
-            LOG.warn("M5 call failed for event {} (status={}): {}",
+            LOG.warn("Judge call failed for event {} (status={}): {}",
                     request.getEventId(), exc.getStatus().getCode(), exc.getMessage());
             dlqPublisher.publish(request.getEventId(), reason,
                     exc.getStatus().getCode() + ": " + exc.getMessage(),
                     request.getEnrichedEventJson());
             return;
         } catch (RuntimeException exc) {
-            LOG.error("Unexpected error calling M5 for event {}",
+            LOG.error("Unexpected error calling the judge for event {}",
                     request.getEventId(), exc);
             dlqPublisher.publish(request.getEventId(), FailureReason.UNEXPECTED,
                     exc.getClass().getSimpleName() + ": " + exc.getMessage(),

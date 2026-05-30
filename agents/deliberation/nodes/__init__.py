@@ -1,4 +1,4 @@
-"""LangGraph nodes for the M5 deliberation.
+"""LangGraph nodes for the deliberation.
 
 Each node is a pure function ``(DeliberationState) -> dict`` returning
 *only* the state keys it owns. LangGraph merges the partial dicts back

@@ -39,19 +39,19 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * End-to-end integration test for M2 — fraud configuration.
+ * End-to-end integration test for feature extraction — fraud configuration.
  *
- * <p>Spring boot starts the M1 producer SDK + the M2 Kafka Streams app + a Testcontainers
+ * <p>Spring boot starts the producer SDK + the feature-extraction Kafka Streams app + a Testcontainers
  * Kafka broker. We publish a batch of PaymentEvents to {@code events.fraud.raw} via the
- * M1 producer, then assert that the same count of EnrichedPaymentEvents appears on
+ * producer, then assert that the same count of EnrichedPaymentEvents appears on
  * {@code events.fraud.enriched} with the computed feature fields populated.
  */
 @Testcontainers
 @SpringBootTest(classes = ConclaveApplication.class,
         properties = {
                 "spring.kafka.streams.state-dir=./target/test-streams-state-fraud",
-                // The M2 IT exercises only the feature-extraction topology;
-                // dropping the M6 slice lets this run without Postgres / M5.
+                // This IT exercises only the feature-extraction topology;
+                // dropping the orchestrator slice lets this run without Postgres / judge.
                 "conclave.orchestrator.enabled=false"
         })
 @ActiveProfiles("fraud")

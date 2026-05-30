@@ -123,7 +123,7 @@ class DeliberationClientTest {
                         .isEqualTo(Status.Code.DEADLINE_EXCEEDED));
     }
 
-    /** Minimal scripted M5 servicer for the in-process channel. */
+    /** Minimal scripted judge servicer for the in-process channel. */
     private static final class TestDeliberationService
             extends DeliberationServiceGrpc.DeliberationServiceImplBase {
         private DeliberationResponse next;

@@ -1,46 +1,183 @@
 @import "tailwindcss";
 
-/* Geist Sans for UI, JetBrains Mono for code/tabular data. Both bundled
-   via Fontsource so the dashboard works offline. */
+/* JetBrains Mono is the primary face — mirrors the marketing site (the IntelliJ
+   idiom carried through). Geist stays loaded as the secondary face for long-form
+   body copy where monospaced paragraphs get fatiguing. */
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
+@import "@fontsource/jetbrains-mono/700.css";
 @import "@fontsource/geist-sans/400.css";
 @import "@fontsource/geist-sans/500.css";
 @import "@fontsource/geist-sans/600.css";
 @import "@fontsource/geist-sans/700.css";
-@import "@fontsource/jetbrains-mono/400.css";
-@import "@fontsource/jetbrains-mono/500.css";
 
-/* shadcn `zinc` palette (Vercel-inspired neutral). Dark mode default. */
-@theme {
-  --font-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* JetBrains Mono leads; Geist carries long-form prose. */
+  --font-sans: "JetBrains Mono", ui-monospace, "Geist Sans", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-heading: "JetBrains Mono", ui-monospace, sans-serif;
+  --font-body: "Geist Sans", "JetBrains Mono", system-ui, sans-serif;
 
-  --color-bg: #09090b;
-  --color-bg-soft: #18181b;
-  --color-bg-card: #0a0a0a;
-  --color-fg: #fafafa;
-  --color-fg-muted: #a1a1aa;
-  --color-fg-subtle: #71717a;
-  --color-border: #27272a;
-  --color-border-strong: #3f3f46;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 
-  --color-accent: #fafafa;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
 
-  /* Risk-score gradient stops — single accent color reserved per spec §8. */
+/* Light mode kept for completeness (the document is forced .dark below), but the
+   palette is tuned for dark-mode-default to match the marketing site. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+
+  /* ── Legacy dashboard tokens, re-pointed onto the shared palette. Existing
+     components reference these via var(--color-*); mapping them here means the
+     whole dashboard adopts the marketing-site colors with no rewrites. CSS var
+     references resolve against the active cascade, so they track .dark below. */
+  --color-bg: var(--background);
+  --color-bg-soft: var(--secondary);
+  --color-bg-card: var(--card);
+  --color-fg: var(--foreground);
+  --color-fg-muted: var(--muted-foreground);
+  --color-fg-subtle: var(--ring);
+  --color-border: var(--border);
+  --color-border-strong: var(--input);
+  --color-accent: var(--primary);
+
+  /* Risk-score gradient stops — unchanged from the original dashboard palette. */
   --color-risk-low: #22c55e;
   --color-risk-med: #eab308;
   --color-risk-high: #ef4444;
 }
 
-html, body, #root {
-  height: 100%;
+.dark {
+  /* Pure black background (Vercel/Linear pattern) instead of shadcn's default
+     0.145 grey. Pairs better with the dense mono text. Mirrors the website. */
+  --background: oklch(0 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.13 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.13 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.145 0 0);
+  --secondary: oklch(0.205 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.205 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.22 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
 }
 
-body {
-  background-color: var(--color-bg);
-  color: var(--color-fg);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Long-form paragraphs flip to Geist for readability. Headings and chrome stay
+     on JetBrains Mono. */
+  p.prose, [data-body="prose"] {
+    font-family: var(--font-body);
+    letter-spacing: -0.005em;
+  }
+  /* Mono numerals everywhere, even inside Geist paragraphs. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* Subtle scrollbar in monospace panels */
+/* Subtle grid background — matches the marketing-site hero aesthetic. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 4%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 4%) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+}
+
+/* Radial fade-out mask so the grid dissolves toward the edges. */
+.bg-grid-fade {
+  mask-image: radial-gradient(ellipse at top, black 25%, transparent 75%);
+}
+
+/* Soft accent glow. */
+.glow {
+  background: radial-gradient(
+    600px circle at 50% 0%,
+    oklch(0.985 0 0 / 6%),
+    transparent 60%
+  );
+}
+
+/* Custom scrollbar to match the rest of the chrome. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -49,9 +186,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
+  background: oklch(1 0 0 / 10%);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-fg-subtle);
+  background: oklch(1 0 0 / 18%);
 }

@@ -24,7 +24,7 @@ class TestBuildProviderFromEnv:
         provider = build_provider_from_env(
             {"JUDGE_LLM_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "sk-test"}
         )
-        # Spec rule #6 — Haiku 4.5 is the lock.
+        # Haiku 4.5 is the lock.
         assert provider.model == "claude-haiku-4-5-20251001"
 
     def test_anthropic_model_can_be_overridden(self) -> None:

@@ -1,0 +1,183 @@
+{
+  "domain": "fraud",
+  "tag": "validation",
+  "n_decisions": 332,
+  "n_joined_with_labels": 332,
+  "judge_provider": {
+    "openai": 332
+  },
+  "judge_model": {
+    "google/gemini-3.1-flash-lite": 332
+  },
+  "verdict_mix": {
+    "REVIEW": 39,
+    "ALLOW": 213,
+    "BLOCK": 80
+  },
+  "truth_mix": {
+    "BUST_OUT": 8,
+    "CLEAN": 236,
+    "FRAUD_ATO": 8,
+    "CARD_TESTING_RING": 80
+  },
+  "detection": {
+    "roc_auc": 0.9988965395480226,
+    "confusion_block": {
+      "tp": 80,
+      "fp": 0,
+      "fn": 16,
+      "tn": 236,
+      "precision": 1.0,
+      "recall": 0.8333333333333334,
+      "f1": 0.9090909090909091,
+      "fpr": 0.0,
+      "accuracy": 0.9518072289156626
+    },
+    "confusion_block_or_review": {
+      "tp": 96,
+      "fp": 23,
+      "fn": 0,
+      "tn": 213,
+      "precision": 0.8067226890756303,
+      "recall": 1.0,
+      "f1": 0.8930232558139535,
+      "fpr": 0.09745762711864407,
+      "accuracy": 0.9307228915662651
+    },
+    "precision_recall_at_fpr_1pct": {
+      "threshold": 0.55,
+      "fpr": 0.00423728813559322,
+      "precision": 0.9888888888888889,
+      "recall": 0.9270833333333334,
+      "tp": 89,
+      "fp": 1
+    },
+    "precision_recall_at_fpr_5pct": {
+      "threshold": 0.45,
+      "fpr": 0.01694915254237288,
+      "precision": 0.96,
+      "recall": 1.0,
+      "tp": 96,
+      "fp": 4
+    },
+    "per_attack_type_recall": {
+      "BUST_OUT": {
+        "flagged": 8,
+        "total": 8,
+        "recall": 1.0
+      },
+      "FRAUD_ATO": {
+        "flagged": 8,
+        "total": 8,
+        "recall": 1.0
+      },
+      "CARD_TESTING_RING": {
+        "flagged": 80,
+        "total": 80,
+        "recall": 1.0
+      }
+    },
+    "score_separation": {
+      "clean_mean": 0.15601694915254238,
+      "clean_p95": 0.35,
+      "attack_mean": 0.8796874999999998,
+      "attack_p05": 0.45
+    }
+  },
+  "latency_ms": {
+    "n": 332,
+    "mean": 2083.2710843373493,
+    "p50": 1811.0,
+    "p90": 2938.9000000000005,
+    "p95": 3564.75,
+    "p99": 8199.35,
+    "max": 9102.0,
+    "min": 1203.0
+  },
+  "latency_by_verdict": {
+    "ALLOW": {
+      "n": 213,
+      "p50": 1780.0,
+      "p95": 3229.7999999999993,
+      "p99": 8240.199999999999
+    },
+    "REVIEW": {
+      "n": 39,
+      "p50": 1880.0,
+      "p95": 3574.7,
+      "p99": 6216.319999999989
+    },
+    "BLOCK": {
+      "n": 80,
+      "p50": 1865.0,
+      "p95": 3670.8999999999996,
+      "p99": 5146.469999999968
+    }
+  },
+  "score_hist": {
+    "counts": [
+      115,
+      22,
+      76,
+      19,
+      10,
+      6,
+      4,
+      0,
+      0,
+      80
+    ],
+    "edges": [
+      0.0,
+      0.1,
+      0.2,
+      0.30000000000000004,
+      0.4,
+      0.5,
+      0.6000000000000001,
+      0.7000000000000001,
+      0.8,
+      0.9,
+      1.0
+    ]
+  },
+  "score_hist_split": {
+    "clean": [
+      115,
+      22,
+      76,
+      19,
+      3,
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    "attack": [
+      0,
+      0,
+      0,
+      0,
+      7,
+      6,
+      3,
+      0,
+      0,
+      80
+    ],
+    "edges": [
+      0.0,
+      0.1,
+      0.2,
+      0.30000000000000004,
+      0.4,
+      0.5,
+      0.6000000000000001,
+      0.7000000000000001,
+      0.8,
+      0.9,
+      1.0
+    ]
+  }
+}

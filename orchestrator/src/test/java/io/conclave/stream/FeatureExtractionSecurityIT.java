@@ -37,7 +37,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * End-to-end integration test for M2 — security configuration. Mirror of
+ * End-to-end integration test for feature extraction — security configuration. Mirror of
  * {@link FeatureExtractionFraudIT} with AuthEvents; smaller batch since fraud already
  * exercises the high-volume case. Asserts the per-principal velocity AND failed-login
  * counters are tracked correctly through the real broker.

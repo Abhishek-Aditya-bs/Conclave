@@ -2,7 +2,7 @@
   "type": "record",
   "name": "PaymentEvent",
   "namespace": "io.conclave.events.fraud",
-  "doc": "Raw payment event for the fraud-detection configuration (card-not-present transactions). The feature-extraction stream job (M2) consumes this off events.fraud.raw and emits enriched events.",
+  "doc": "Raw payment event for the fraud-detection configuration (card-not-present transactions). The feature-extraction stream job consumes this off events.fraud.raw and emits enriched events.",
   "fields": [
     {
       "name": "eventId",
@@ -17,7 +17,7 @@
     {
       "name": "cardholderId",
       "type": "string",
-      "doc": "Stable opaque identifier for the cardholder/customer. The behavioral baseline (M3) keys on this."
+      "doc": "Stable opaque identifier for the cardholder/customer. The behavioral baseline keys on this."
     },
     {
       "name": "cardToken",
@@ -42,7 +42,7 @@
     {
       "name": "merchantCategoryCode",
       "type": "int",
-      "doc": "ISO 18245 MCC. Drives the BIN/MCC risk feature in M2."
+      "doc": "ISO 18245 MCC. Drives the BIN/MCC risk feature in feature extraction."
     },
     {
       "name": "bin",
@@ -52,7 +52,7 @@
     {
       "name": "deviceFingerprint",
       "type": "string",
-      "doc": "Hashed device fingerprint from the upstream JS/SDK collector. One node in the cardholder/device/IP graph (M4)."
+      "doc": "Hashed device fingerprint from the upstream JS/SDK collector. One node in the cardholder/device/IP graph."
     },
     {
       "name": "ipAddress",

@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for M5."""
+"""Shared pytest fixtures for the deliberation service."""
 from __future__ import annotations
 
 import json
@@ -17,7 +17,7 @@ from deliberation.state import (
 
 @pytest.fixture
 def fraud_event_json() -> str:
-    """A canonical fraud event payload — matches M2's EnrichedPaymentEvent shape."""
+    """A canonical fraud event payload — matches the EnrichedPaymentEvent shape."""
     return json.dumps(
         {
             "eventId": "evt-fraud-1",
@@ -46,7 +46,7 @@ def fraud_event_json() -> str:
 
 @pytest.fixture
 def security_event_json() -> str:
-    """A canonical security event payload — matches M2's EnrichedAuthEvent shape."""
+    """A canonical security event payload — matches the EnrichedAuthEvent shape."""
     return json.dumps(
         {
             "eventId": "evt-sec-1",

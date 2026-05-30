@@ -20,12 +20,12 @@ import org.springframework.stereotype.Repository;
  * <ol>
  *   <li>{@code contributing_factors} is JSONB on the Postgres side; the
  *       JDBC driver expects {@code Object}-typed parameters with explicit
- *       cast on the SQL side ({@code ?::jsonb}). Same pattern as M3's
- *       pgvector text-to-vector cast.</li>
+ *       cast on the SQL side ({@code ?::jsonb}). Same pattern as the baseline
+ *       service's pgvector text-to-vector cast.</li>
  *   <li>{@code ObjectMapper} is instantiated directly (not autowired)
  *       because Spring Boot 4 with only {@code spring-boot-starter-web}
- *       on the classpath doesn't auto-register one in every layout — M4
- *       hit the same gotcha. ObjectMapper is thread-safe; one per repo
+ *       on the classpath doesn't auto-register one in every layout — the graph
+ *       service hit the same gotcha. ObjectMapper is thread-safe; one per repo
  *       is fine.</li>
  * </ol>
  */

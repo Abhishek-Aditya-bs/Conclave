@@ -1,7 +1,7 @@
 [project]
 name = "conclave-deliberation"
 version = "0.1.0"
-description = "CONCLAVE M5 — LangGraph multi-agent deliberation orchestrator (Python sidecar)."
+description = "CONCLAVE — LangGraph multi-agent deliberation orchestrator (Python sidecar)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Creates the {@code decisions} table on startup. Mirrors the idempotent
- * {@code CREATE TABLE IF NOT EXISTS} pattern M3 uses for {@code baselines}.
+ * {@code CREATE TABLE IF NOT EXISTS} pattern the baseline service uses for {@code baselines}.
  *
  * <p>Schema choices (recorded in ADR-005):
  * <ul>
@@ -18,11 +18,11 @@ import org.springframework.stereotype.Component;
  *       downstream consumers; not a Postgres-side default to keep the
  *       application portable.</li>
  *   <li>{@code contributing_factors JSONB} — opaque to the relational
- *       schema, but JSONB lets M7's audit API query by factor name /
+ *       schema, but JSONB lets the audit API query by factor name /
  *       weight without forcing a normalized child table.</li>
- *   <li>{@code enriched_event_json TEXT} — verbatim of what M6 sent to M5.
+ *   <li>{@code enriched_event_json TEXT} — verbatim of what the orchestrator sent to the judge.
  *       Persisting the prompt input is what makes the replay endpoint
- *       (M7) cheap.</li>
+ *       cheap.</li>
  *   <li>{@code created_at TIMESTAMP WITH TIME ZONE} — clock skew protection
  *       on cross-region deployments. Defaults to NOW() server-side as a
  *       sanity backstop; the application always sends its own value.</li>
@@ -34,11 +34,11 @@ import org.springframework.stereotype.Component;
  */
 /*
  * Gated behind {@code conclave.orchestrator.enabled} (default true) so the
- * older M1/M2 ITs that don't spin up a Postgres container can disable the
+ * older ingest/stream ITs that don't spin up a Postgres container can disable the
  * decision-orchestrator slice cleanly. Same flag covers
  * {@link io.conclave.orchestrator.JdbcDecisionRepository},
- * {@link io.conclave.orchestrator.DecisionConsumer}, and the M6 messaging
- * config classes — disabling the flag drops the full M6 graph as one unit.
+ * {@link io.conclave.orchestrator.DecisionConsumer}, and the orchestrator's messaging
+ * config classes — disabling the flag drops the full orchestrator graph as one unit.
  */
 @Component
 @ConditionalOnProperty(name = "conclave.orchestrator.enabled", havingValue = "true",
@@ -49,7 +49,7 @@ public class SchemaInitializer {
 
     // Idempotent. Run on every startup so a fresh Postgres + the orchestrator
     // converge without a separate migration tool. Flyway is overkill for one
-    // table; we'll revisit if M7's audit schema gets more complex.
+    // table; we'll revisit if the audit schema gets more complex.
     private static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS decisions (
                 decision_id            UUID PRIMARY KEY,
@@ -68,7 +68,7 @@ public class SchemaInitializer {
             )
             """;
 
-    // Idempotent migration step: tables created before M7 don't have
+    // Idempotent migration step: older tables don't have
     // baseline_entity_id. ADD COLUMN IF NOT EXISTS is Postgres 9.6+; we
     // rely on it for the demo cluster's roll-forward and skip Flyway/Liquibase.
     private static final String ENSURE_BASELINE_ENTITY_COLUMN = """
@@ -93,7 +93,7 @@ public class SchemaInitializer {
     public void initialize() {
         LOG.info("Initializing decisions table schema");
         jdbc.execute(CREATE_TABLE);
-        // Roll-forward: pre-M7 tables don't carry baseline_entity_id; this
+        // Roll-forward: older tables don't carry baseline_entity_id; this
         // ALTER is idempotent so a fresh table just no-ops.
         jdbc.execute(ENSURE_BASELINE_ENTITY_COLUMN);
         for (String ddl : CREATE_INDEXES) {

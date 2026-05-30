@@ -8,7 +8,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
- * {@link KafkaListener} that drives the M6 orchestrator off
+ * {@link KafkaListener} that drives the orchestrator off
  * {@code events.{domain}.enriched}.
  *
  * <p>The topic name and consumer group id are SpEL-resolved against the
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
  * <p>Listener concurrency is left at the Spring default (1 per consumer
  * group instance). For higher throughput, bump
  * {@code spring.kafka.listener.concurrency} or the partition count on
- * the enriched topic — M2 already keys by {@code baselineEntityId} so
+ * the enriched topic — feature extraction already keys by {@code baselineEntityId} so
  * scaling partitions preserves per-entity ordering through the
  * pipeline.
  */

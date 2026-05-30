@@ -1,4 +1,4 @@
-"""gRPC clients for the M3 (baseline) and M4 (graph) services.
+"""gRPC clients for the baseline and graph services.
 
 Each client wraps the generated stub with a thin, Pythonic surface that
 returns plain Python dataclasses instead of proto messages. This keeps

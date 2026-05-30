@@ -3,7 +3,7 @@
 Two backends:
 
 * ``anthropic`` — default; uses the Anthropic Python SDK against
-  ``claude-haiku-4-5-20251001`` (spec rule #6). Structured output is
+  ``claude-haiku-4-5-20251001``. Structured output is
   produced by forcing tool use against a single ``record_decision`` tool
   whose schema mirrors the ``Decision`` proto.
 * ``ollama`` — opt-in; uses ``langchain-ollama``'s ``ChatOllama`` with
@@ -11,7 +11,7 @@ Two backends:
   is embedded in the prompt and validated post-hoc.
 
 The factory is keyed off the ``JUDGE_LLM_PROVIDER`` env var. Published
-benchmarks must come from the Anthropic backend (spec §5 caveat); the
+benchmarks must come from the Anthropic backend; the
 Ollama path exists for self-hosters who can't or won't use the Anthropic
 API.
 """
@@ -35,7 +35,7 @@ from deliberation.state import (
 
 _LOG = logging.getLogger(__name__)
 
-# Spec rule #6 — judge model lock. Do not silently swap to Sonnet/Opus.
+# Judge model lock. Do not silently swap to Sonnet/Opus.
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 # Local default — the Gemma the project owner has pulled in their Ollama.
 DEFAULT_OLLAMA_MODEL = "gemma4:e4b"
@@ -111,12 +111,69 @@ The Decision MUST include:
                            where weight is signed in [-1, 1]; positive nudges BLOCK,
                            negative nudges ALLOW.
 
-Calibration guidance:
+The three signals have very different reliability. Weigh them by what each can
+actually see:
+  * EXPLICIT RULE FEATURES (failed-login bursts, velocity, privilege, result,
+    amount, merchant) come straight from the event and its recent history. They
+    are DIRECT, high-precision evidence of what actually happened. A severe rule
+    indicator is strong evidence of attack ON ITS OWN.
+  * GRAPH risk_signal with a NAMED pattern (card_testing_ring, lateral_movement) is
+    a CONFIRMED structural campaign, not a guess.
+  * The BEHAVIORAL baseline (cosine similarity / anomaly_score) is the WEAKEST and
+    most easily fooled signal. It only measures whether this event resembles the
+    SAME entity's own recent events. It does NOT understand result=FAILURE,
+    automation user-agents, privilege, or amount magnitude. When an attacker
+    repeats a malicious action many times (e.g. a failed-login burst), the entity's
+    rolling profile DRIFTS toward the attack, so cosine stays HIGH (anomaly LOW)
+    even mid-attack. Categorical and novel attacks routinely embed as "normal".
+
+Calibration guidance (do NOT change the numeric bands):
+  * Anchor the score on the STRONGEST piece of DIRECT evidence (a severe rule
+    indicator or a confirmed graph pattern), NOT on the behavioral signal.
+  * A confirmed graph pattern (named: card_testing_ring / lateral_movement) with
+    risk_signal ≥ 0.8 is decisive → score ≥ 0.80, BLOCK.
+  * A single SEVERE rule indicator is enough for high-REVIEW or BLOCK on its own:
+      - failed_logins_recent ≥ 10 (failed-login / credential-stuffing burst),
+        especially with result=FAILURE and an automation/scripted user-agent
+        (curl, wget, python, boto3, bot) → score ≥ 0.75, BLOCK.
+      - repeated FAILURE from an automation user-agent → attack-grade.
+      - privileged access from an unusual / automation context → attack-grade.
+      - card-testing velocity (one device, ≥3 distinct cards, small-amount
+        FAILUREs) → attack-grade (BLOCK if the graph also names card_testing_ring).
+      - bust-out / account-takeover spending: a large amount AND a new merchant
+        (out-of-character high-value charge) → score ≥ 0.70, BLOCK; a large amount
+        OR a new merchant alone → REVIEW.
+  * A "normal" behavioral signal (high cosine / low anomaly) is WEAK corroboration,
+    NOT exoneration. It MUST NOT cancel, override, or heavily discount a severe
+    rule indicator or a confirmed graph pattern. If the rules or graph say attack
+    but the embedding says normal, TRUST the rules/graph — the embedding is blind
+    to this attack class. Only lower a score for a normal embedding when the
+    rule/graph evidence is itself weak or absent.
+  * A high behavioral anomaly (low cosine) WITH no corroborating rule or graph
+    signal is at most REVIEW, not BLOCK (embeddings also false-positive).
   * Cold-start entities (no baseline yet) get a mild prior of risk, not a verdict.
-  * Graph risk_signal ≥ 0.8 with a named structural pattern (ring, lateral) is strong.
-  * High velocity alone is suggestive but not dispositive — combine with other signals.
-  * Be honest about uncertainty. The verdict drives downstream automation; over-blocking
-    has a real cost.
+  * KEEP DISCIPLINE on clean traffic: with NO severe rule indicator, NO named graph
+    pattern, and a normal embedding (e.g. a routine result=SUCCESS browser login,
+    low velocity, no failed logins; or a normal-amount grocery purchase), the score
+    must stay in ALLOW. Do not invent risk — only genuine attack indicators escalate.
+    Over-blocking benign traffic has a real cost.
+  * Be decisive: corroborating signals push toward the extremes. Do not cluster
+    everything at 0.5.
+
+CALIBRATION EXAMPLES (note how DIRECT evidence overrules a normal embedding):
+  A. Card-testing ring → BLOCK. graph risk_signal=0.91 pattern=card_testing_ring;
+     behavioral cosine=0.41 anomaly=0.88 → score≈0.90, BLOCK (named pattern decisive).
+  B. Normal browser login → ALLOW. failed_logins_recent=0, velocity=2,
+     result=SUCCESS, browser agent, not privileged; cosine=0.97 anomaly=0.03
+     → score≈0.06, ALLOW.
+  C. Failed-login burst, embedding looks NORMAL → BLOCK. failed_logins_recent=15,
+     result=FAILURE, curl/automation agent; cosine=0.98 anomaly=0.02 → score≈0.82,
+     BLOCK. The high cosine only means the attacker repeated the same action so the
+     profile drifted; it is NOT exoneration and must not discount the burst.
+  D. Bust-out spending → BLOCK. amount large AND a brand-new merchant,
+     result=SUCCESS; cosine=0.62 anomaly=0.38 → score≈0.74, BLOCK.
+  E. A few failed logins from a browser, mild anomaly, no named pattern → REVIEW
+     (≈0.50): ambiguous, needs a human.
 
 Output ONLY the structured Decision via the tool / JSON contract provided. \
 Do not add prose outside that structure.
@@ -159,9 +216,9 @@ def build_user_prompt(judge_input: JudgeInput, *, domain: str) -> str:
             parts.append(f"- {key} = {value}")
 
     parts.append("")
-    parts.append("### Behavioral baseline (M3)")
+    parts.append("### Behavioral baseline")
     if judge_input.baseline_finding is None:
-        parts.append("_M3 unavailable — proceed with no behavioral signal._")
+        parts.append("_Baseline unavailable — proceed with no behavioral signal._")
     elif judge_input.baseline_finding.is_cold_start:
         parts.append(
             f"Cold-start entity '{judge_input.baseline_finding.entity_id}' — "
@@ -183,13 +240,21 @@ def build_user_prompt(judge_input: JudgeInput, *, domain: str) -> str:
                 f"Behavioral anomaly score (0=matches history, 1=deviant): "
                 f"{b.anomaly_score:.3f}."
             )
+        if b.cosine_similarity is not None and b.cosine_similarity >= 0.90:
+            parts.append(
+                "Note: this is the WEAKEST signal. A high cosine only means this event "
+                "resembles the SAME entity's recent events; for a repeated attack the "
+                "profile drifts toward the attack, so a normal embedding here is NOT "
+                "exoneration and must not cancel a severe rule indicator or named "
+                "graph pattern."
+            )
         if b.note:
             parts.append(f"Note: {b.note}")
 
     parts.append("")
-    parts.append("### Graph reasoning (M4)")
+    parts.append("### Graph reasoning")
     if judge_input.graph_finding is None:
-        parts.append("_M4 unavailable or no template applied._")
+        parts.append("_Graph reasoning unavailable or no template applied._")
     else:
         g = judge_input.graph_finding
         parts.append(
@@ -204,14 +269,104 @@ def build_user_prompt(judge_input: JudgeInput, *, domain: str) -> str:
         if g.note:
             parts.append(f"Note: {g.note}")
 
+    # Deterministic restatement of the severe attack flags already present in the
+    # feature/graph evidence above (no new data, no verdict) so the judge does not
+    # overlook a strong indicator buried in the numeric dump.
+    indicators = _direct_attack_indicators(judge_input)
+    parts.append("")
+    parts.append("### Direct attack indicators (factual flags from rules/graph)")
+    if indicators:
+        for ind in indicators:
+            parts.append(f"- {ind}")
+    else:
+        parts.append("- none")
+
     parts.append("")
     parts.append(
         "Suggested factor vocabulary (use names from this list when applicable): "
         + ", ".join(SUGGESTED_FACTOR_VOCABULARY)
     )
     parts.append("")
-    parts.append("Produce the Decision now.")
+    parts.append(
+        "Produce the Decision now. Anchor the score on the strongest direct "
+        "indicator or confirmed graph pattern; a normal embedding does not cancel them."
+    )
     return "\n".join(parts)
+
+
+def _direct_attack_indicators(judge_input: JudgeInput) -> list[str]:
+    """Surface factual, rubric-aligned attack flags from the rule/graph signals.
+
+    Pure restatement of fields already in the digest — no new evidence and no
+    verdict. The numeric feature keys mirror ``nodes/feature.py``:
+    ``failed_logins_recent``, ``principal_velocity``, ``is_privileged`` (security)
+    and ``amount_minor``, ``cardholder_velocity``, ``bin_risk_score`` (fraud).
+    """
+    out: list[str] = []
+    fs = judge_input.feature_summary
+    numeric = fs.numeric or {}
+
+    def _num(key: str) -> float:
+        try:
+            return float(numeric.get(key, 0.0) or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    # The headline/bullets carry the categorical fields (result, agent, merchant);
+    # scan them case-insensitively for the discriminating tokens.
+    blob = " ".join([fs.headline, *fs.bullets]).lower()
+    is_failure = "result=failure" in blob
+    is_automation = any(
+        tok in blob for tok in ("curl", "wget", "python", "boto3", "go-http", "bot", "scan")
+    )
+
+    # --- security indicators ---
+    failed = _num("failed_logins_recent")
+    if failed >= 10:
+        suffix = ""
+        if is_automation:
+            suffix += " from an automation/scripted user-agent"
+        if is_failure:
+            suffix += " with result=FAILURE"
+        out.append(
+            f"SEVERE: failed-login burst (failed_logins_recent={int(failed)}){suffix}"
+        )
+    elif failed >= 5:
+        out.append(f"failed-login cluster (failed_logins_recent={int(failed)})")
+
+    if is_automation and is_failure:
+        out.append("repeated FAILURE from an automation/scripted agent")
+
+    if _num("is_privileged") >= 1.0 and is_automation:
+        out.append("privileged access from an automation/unusual context")
+
+    # --- fraud indicators ---
+    amount_minor = _num("amount_minor")
+    new_merchant = "newmerchant" in blob or "new merchant" in blob or "new-merchant" in blob
+    if amount_minor >= 100_000 and new_merchant:
+        out.append(
+            f"bust-out spending: large amount={amount_minor / 100:.2f} to a NEW merchant"
+        )
+    elif amount_minor >= 100_000:
+        out.append(f"large amount={amount_minor / 100:.2f} (single-signal)")
+    elif new_merchant:
+        out.append("charge to a new merchant (single-signal)")
+
+    # --- graph pattern ---
+    g = judge_input.graph_finding
+    if g is not None and g.risk_signal >= 0.80:
+        cardholders = g.attributes.get("cardholderCount") if g.attributes else None
+        hosts = g.attributes.get("hostCount") if g.attributes else None
+        detail = ""
+        if cardholders:
+            detail = f" ({cardholders} cardholders share one device)"
+        elif hosts:
+            detail = f" ({hosts} distinct hosts)"
+        out.append(
+            f"confirmed graph pattern '{g.template_name}' at risk={g.risk_signal:.2f}{detail}"
+        )
+
+    return out
 
 
 # -------------------- Decision schema (shared) --------------------
@@ -329,7 +484,7 @@ def derive_fallback_decision(judge_input: JudgeInput, *, domain: str) -> JudgeOu
                     name="graph_signal",
                     weight=g.risk_signal,
                     evidence=(
-                        f"M4 template '{g.template_name}' returned "
+                        f"Graph template '{g.template_name}' returned "
                         f"risk_signal={g.risk_signal:.2f}."
                     ),
                 )

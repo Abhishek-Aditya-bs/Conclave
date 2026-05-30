@@ -95,8 +95,9 @@ class FraudTemplatesIT {
         assertThat(f.attributes().get("cardholderCount")).isEqualTo(5L);
         assertThat(f.attributes().get("cardCount")).isEqualTo(10L);
         assertThat(f.riskSignal()).isGreaterThan(0.0);
-        // 5 / 10 = 0.5
-        assertThat(f.riskSignal()).isEqualTo(0.5);
+        // 5 cardholders sharing one device is a clear ring; the count-driven curve
+        // (0.60 at 3, +0.20/cardholder) saturates at 1.0 by 5 → BLOCK-grade.
+        assertThat(f.riskSignal()).isEqualTo(1.0);
         assertThat(f.queryLatencyMs()).isGreaterThanOrEqualTo(0L);
     }
 

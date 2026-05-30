@@ -1,4 +1,4 @@
-"""Generated gRPC stubs for M5.
+"""Generated gRPC stubs for the deliberation service.
 
 The grpc_tools.protoc compiler emits flat-namespace imports
 (e.g. ``import baseline_pb2`` inside ``baseline_pb2_grpc.py``), but our

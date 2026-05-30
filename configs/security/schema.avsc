@@ -2,7 +2,7 @@
   "type": "record",
   "name": "AuthEvent",
   "namespace": "io.conclave.events.security",
-  "doc": "Raw authentication/access event for the SOC configuration. Covers logins, SSH sessions, API key use, and access-control evaluations. Consumed off events.security.raw by the M2 feature-extraction stream job.",
+  "doc": "Raw authentication/access event for the SOC configuration. Covers logins, SSH sessions, API key use, and access-control evaluations. Consumed off events.security.raw by the feature-extraction stream job.",
   "fields": [
     {
       "name": "eventId",
@@ -17,12 +17,12 @@
     {
       "name": "principalId",
       "type": "string",
-      "doc": "Stable opaque identifier for the authenticating principal (user, service account, machine identity). The behavioral baseline (M3) keys on this."
+      "doc": "Stable opaque identifier for the authenticating principal (user, service account, machine identity). The behavioral baseline keys on this."
     },
     {
       "name": "hostId",
       "type": "string",
-      "doc": "Stable identifier for the target host or resource owner. One node in the identity/host/resource graph (M4)."
+      "doc": "Stable identifier for the target host or resource owner. One node in the identity/host/resource graph."
     },
     {
       "name": "sourceIp",
@@ -36,7 +36,7 @@
         "name": "AuthMethod",
         "symbols": ["PASSWORD", "SSO", "MFA", "API_KEY", "SSH_KEY", "CERTIFICATE", "OTHER"]
       },
-      "doc": "How the principal authenticated. Drives the lateral-movement detection patterns in M4."
+      "doc": "How the principal authenticated. Drives the lateral-movement detection patterns in the graph reasoner."
     },
     {
       "name": "result",

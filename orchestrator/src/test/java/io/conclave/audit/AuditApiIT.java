@@ -38,15 +38,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * End-to-end IT for the M7 audit API.
+ * End-to-end IT for the audit API.
  *
- * <p>Boots the full Spring context (M1 + M2 + M6 + M7) under fraud profile,
- * seeds rows via the M6 {@link DecisionRepository}, then hits the M7 REST
+ * <p>Boots the full Spring context (ingest + stream + orchestrator + audit) under fraud profile,
+ * seeds rows via the {@link DecisionRepository}, then hits the audit REST
  * endpoints over a real HTTP transport ({@link RestClient} with the
  * Spring-assigned local port).
  *
- * <p>The replay test wires a Netty in-process mock M5 the orchestrator's
- * {@code DeliberationClient} can connect to — same setup the M6 IT uses.
+ * <p>The replay test wires a Netty in-process mock judge the orchestrator's
+ * {@code DeliberationClient} can connect to — same setup the orchestrator IT uses.
  */
 @SpringBootTest(
         classes = ConclaveApplication.class,
@@ -229,7 +229,7 @@ class AuditApiIT {
         assertThat(payload.get("verdict_label").asText()).isEqualTo("REVIEW");
         assertThat(payload.get("score").asDouble()).isEqualTo(0.40);
 
-        // The orchestrator forwarded the correct evidence to M5.
+        // The orchestrator forwarded the correct evidence to the judge.
         DeliberationRequest sentToM5 = mockM5.lastRequest();
         assertThat(sentToM5.getEventId()).isEqualTo("evt-replay-1");
         assertThat(sentToM5.getBaselineEntityId()).isEqualTo("c-replay");
@@ -286,7 +286,7 @@ class AuditApiIT {
         }
     }
 
-    /** Real Netty mock M5; one-shot scripted response per test. */
+    /** Real Netty mock of the judge; one-shot scripted response per test. */
     static final class MockM5 extends DeliberationServiceGrpc.DeliberationServiceImplBase {
         private final Server server;
         private volatile DeliberationResponse pending;

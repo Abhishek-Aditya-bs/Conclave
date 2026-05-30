@@ -64,9 +64,9 @@ public class AuditService {
     }
 
     /**
-     * Replay: rebuild the M5 request from the stored row and call M5
+     * Replay: rebuild the deliberation request from the stored row and call the judge
      * again. We do NOT persist the new decision — replay is for
-     * "what would M5 say now / with a different backend" inspection,
+     * "what would the judge say now / with a different backend" inspection,
      * not for backfilling audit history.
      */
     public DecisionDetail replay(UUID decisionId) {
@@ -91,7 +91,7 @@ public class AuditService {
 
     /**
      * Pull {@code graphEntityIds} out of the stored enriched-event JSON.
-     * Field name matches the M2 enriched-schema (see
+     * Field name matches the enriched-schema (see
      * {@code configs/{domain}/enriched-schema.avsc}). Defaults to empty
      * list if the field is missing or unparseable — replay still works,
      * just without graph context.

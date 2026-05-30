@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Publishes a failure payload to {@code decisions.{domain}.failed} when
- * the orchestrator can't produce a Decision (M5 timeout, M5 INTERNAL,
+ * the orchestrator can't produce a Decision (judge timeout, judge internal error,
  * Postgres write failure, malformed event).
  *
  * <p>The DLQ payload is JSON with three fields:

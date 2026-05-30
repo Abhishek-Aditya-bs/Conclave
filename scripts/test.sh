@@ -7,10 +7,35 @@
 #
 #   ./scripts/test.sh          # both
 #   ./scripts/test.sh java     # Java only
-#   ./scripts/test.sh python   # Python (M5) only
+#   ./scripts/test.sh python   # Python only
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_common.sh"
 
-WHICH="${1:-all}"
+# Capture the arg without defaulting yet, so we can tell whether the caller
+# passed it. Arg present → use it directly with NO prompt (CI stays
+# non-interactive). Missing + TTY → prompt; missing + non-TTY → default to all.
+WHICH="${1:-}"
+
+if [ -z "$WHICH" ]; then
+  if [ -t 0 ]; then
+    while [ -z "$WHICH" ]; do
+      echo "Select test scope:"
+      echo "  1) all     → Java + Python"
+      echo "  2) java    → Java only"
+      echo "  3) python  → Python only"
+      read -rp "Choice [1]: " _which_choice
+      _which_choice="${_which_choice:-1}"
+      case "$_which_choice" in
+        1) WHICH="all" ;;
+        2) WHICH="java" ;;
+        3) WHICH="python" ;;
+        *) warn "Invalid choice, try again" ;;
+      esac
+    done
+  else
+    WHICH="all"
+    info "No scope arg and stdin is not a TTY → defaulting to all"
+  fi
+fi
 
 run_java() {
   command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 \
@@ -21,7 +46,7 @@ run_java() {
 }
 
 run_python() {
-  info "Python (M5): uv sync + protos + ruff + pytest…"
+  info "Python: uv sync + protos + ruff + pytest…"
   ( cd agents \
       && uv sync --extra dev \
       && uv run ./scripts/gen_protos.sh \

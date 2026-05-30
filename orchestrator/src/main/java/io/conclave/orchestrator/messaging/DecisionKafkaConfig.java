@@ -13,10 +13,10 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 
 /**
- * Producer wiring for M6's two output topics. Decision payloads are JSON
+ * Producer wiring for the orchestrator's two output topics. Decision payloads are JSON
  * strings (not Avro) because:
  * <ul>
- *   <li>The dashboard (M10) and benchmark scripts both expect JSON, and
+ *   <li>The dashboard and benchmark scripts both expect JSON, and
  *       defining a separate Avro schema for Decision just to re-serialize
  *       to JSON downstream is pure ceremony.</li>
  *   <li>The {@code judge_provider} + {@code judge_model} fields evolve
@@ -25,7 +25,7 @@ import org.springframework.kafka.core.ProducerFactory;
  * </ul>
  *
  * <p>This is in addition to the {@code KafkaTemplate<String, SpecificRecord>}
- * declared by {@code io.conclave.ingest.KafkaProducerConfig} for the M1
+ * declared by {@code io.conclave.ingest.KafkaProducerConfig} for the raw
  * Avro path; both coexist because Spring's generic-aware DI distinguishes
  * them by their type parameters.
  */

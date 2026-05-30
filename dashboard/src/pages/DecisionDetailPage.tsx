@@ -97,7 +97,7 @@ export function DecisionDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Enriched event (consumed by M5)</CardTitle>
+          <CardTitle>Enriched event (consumed by the judge)</CardTitle>
         </CardHeader>
         <CardBody>
           <JsonBlock payload={data.enriched_event_json} />

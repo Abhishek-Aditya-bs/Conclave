@@ -1,15 +1,15 @@
-"""Graph reasoner node — calls M4 over gRPC.
+"""Graph reasoner node — calls the graph service over gRPC.
 
 Picks ONE template per domain (the "risk" template; the neighborhood /
 descriptive templates are not invoked in the hot path because they
 don't carry a risk_signal). The judge sees the resulting finding plus
-the M4 risk_signal as one input among several.
+the graph risk_signal as one input among several.
 
 Template selection:
   * fraud    → ``fraud_card_testing_ring`` (rooted on the device fingerprint).
   * security → ``security_lateral_movement`` (rooted on the principal).
 
-Both are depth-bounded by M4 (`*1..2`) so latency stays predictable.
+Both are depth-bounded by the graph service (`*1..2`) so latency stays predictable.
 """
 from __future__ import annotations
 
@@ -24,16 +24,20 @@ from deliberation.state import DeliberationState
 _LOG = logging.getLogger(__name__)
 
 
-# Per-domain template + the state key (or graph_entity_ids index) we root on.
-# fraud: device fingerprint is graph_entity_ids[1] in M2's EnrichedPaymentEvent
+# Per-domain template + the param KEY the graph template requires for its root
+# entity. The key must match the Java template exactly (it fails fast on a
+# missing/blank required param): FraudCardTestingRingTemplate requires
+# "deviceFingerprint" and SecurityLateralMovementTemplate requires "principalId"
+# (both camelCase). The root VALUE comes from graph_entity_ids:
+# fraud: device fingerprint is graph_entity_ids[1] in the EnrichedPaymentEvent
 #        emission order (cardholder, device, ip, merchant). See
 #        configs/fraud/enriched-schema.avsc.
-# security: principal is graph_entity_ids[0] in M2's EnrichedAuthEvent
+# security: principal is graph_entity_ids[0] in the EnrichedAuthEvent
 #        emission order (principal, host, ip, [target]). See
 #        configs/security/enriched-schema.avsc.
 _DOMAIN_TEMPLATE: dict[str, tuple[str, str]] = {
-    "fraud": ("fraud_card_testing_ring", "device_fingerprint"),
-    "security": ("security_lateral_movement", "principal_id"),
+    "fraud": ("fraud_card_testing_ring", "deviceFingerprint"),
+    "security": ("security_lateral_movement", "principalId"),
 }
 
 
@@ -80,7 +84,7 @@ def make_graph_reasoner_node(client: GraphClient | None):
         except grpc.RpcError as exc:
             code = getattr(exc, "code", lambda: None)()
             _LOG.warning(
-                "graph_reasoner: M4 gRPC failure (code=%s) for template=%s root=%s",
+                "graph_reasoner: graph gRPC failure (code=%s) for template=%s root=%s",
                 code,
                 template_name,
                 root_entity,
@@ -102,7 +106,7 @@ def make_graph_reasoner_node(client: GraphClient | None):
 def _pick_root(domain: str, entity_ids: list[str], state: DeliberationState) -> str:
     """Pick the right node from ``graph_entity_ids`` for the chosen template.
 
-    Layouts (from M2):
+    Layouts (from the enriched schema):
       fraud:    [cardholderId, deviceFingerprint, ipAddress, merchantId]
       security: [principalId, hostId, sourceIp, (targetResource if present)]
 

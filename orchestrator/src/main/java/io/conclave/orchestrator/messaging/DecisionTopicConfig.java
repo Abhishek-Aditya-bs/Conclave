@@ -14,10 +14,10 @@ import org.springframework.kafka.config.TopicBuilder;
  * {@code <prefix>-<FQCN>} name that SpEL can't resolve cleanly. */
 
 /**
- * Declares the two output topics M6 owns:
+ * Declares the two output topics the orchestrator owns:
  * <ul>
  *   <li>{@code decisions.{domain}} — every Decision the orchestrator produces.</li>
- *   <li>{@code decisions.{domain}.failed} — DLQ for events where M5 timed out,
+ *   <li>{@code decisions.{domain}.failed} — DLQ for events where the judge timed out,
  *       returned INTERNAL, or where Postgres persistence threw. Don't drop
  *       events; let a downstream tool replay or alert.</li>
  * </ul>

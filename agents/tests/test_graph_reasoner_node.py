@@ -1,4 +1,4 @@
-"""Graph-reasoner-node tests — mocked M4 gRPC client."""
+"""Graph-reasoner-node tests — mocked graph gRPC client."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -43,10 +43,10 @@ class TestGraphReasonerNode:
         node = make_graph_reasoner_node(client)
         result = node(_state())
         assert result["graph_finding"].risk_signal == 0.85
-        # M4 template + param key for fraud — see configs/fraud/enriched-schema.avsc layout.
+        # Graph template + param key for fraud — see configs/fraud/enriched-schema.avsc layout.
         client.execute_template.assert_called_once_with(
             template_name="fraud_card_testing_ring",
-            params={"device_fingerprint": "dev-suspect"},
+            params={"deviceFingerprint": "dev-suspect"},
         )
 
     def test_security_happy_path_roots_on_principal(self):
@@ -68,7 +68,7 @@ class TestGraphReasonerNode:
         node(state)
         client.execute_template.assert_called_once_with(
             template_name="security_lateral_movement",
-            params={"principal_id": "alice@corp"},
+            params={"principalId": "alice@corp"},
         )
 
     def test_unknown_domain(self):
@@ -126,5 +126,5 @@ class TestGraphReasonerNode:
         node(_state(graph_entity_ids=["just-one"]))
         client.execute_template.assert_called_once_with(
             template_name="fraud_card_testing_ring",
-            params={"device_fingerprint": "just-one"},
+            params={"deviceFingerprint": "just-one"},
         )

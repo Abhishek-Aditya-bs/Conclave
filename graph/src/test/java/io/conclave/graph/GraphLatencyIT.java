@@ -26,7 +26,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * p99 query-latency test — the spec asks for {@code <50ms} at the M4 acceptance bar
+ * p99 query-latency test — the target is {@code <50ms} p99
  * on a 1M-edge graph.
  *
  * <p>This test seeds a graph at the same order of magnitude — 5,000 cardholders +

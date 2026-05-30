@@ -22,7 +22,7 @@ import java.util.stream.Stream;
  * keeps a stable {@link SecurityPrincipalProfile} (home hosts, preferred method, user agent,
  * privilege) across the whole window. The behavioural spread across principals — different
  * host pools, method preferences, and privilege — is the security analogue of the fraud
- * amount distributions, and it is what gives the M3 baseline + graph realistic per-principal
+ * amount distributions, and it is what gives the baseline + graph realistic per-principal
  * history to learn before the adversarial scenarios deviate from it.
  */
 public class SecurityMultiDayPopulationScenario implements Scenario {

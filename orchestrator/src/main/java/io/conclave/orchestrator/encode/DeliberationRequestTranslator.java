@@ -9,12 +9,12 @@ import org.apache.avro.generic.IndexedRecord;
 import org.springframework.stereotype.Component;
 
 /**
- * Translates an Avro {@link IndexedRecord} (the M2 {@code EnrichedPaymentEvent}
- * or {@code EnrichedAuthEvent}) into the M5 {@link DeliberationRequest} proto.
+ * Translates an Avro {@link IndexedRecord} (the {@code EnrichedPaymentEvent}
+ * or {@code EnrichedAuthEvent}) into the {@link DeliberationRequest} proto.
  *
  * <p>Three well-known field names are pulled out as proto-level
  * orchestration scalars; the full record is also stringified to JSON for
- * the judge prompt. Keeping the well-known fields typed avoids the M5
+ * the judge prompt. Keeping the well-known fields typed avoids the judge's
  * Python side having to reparse the JSON to find IDs it already knows
  * the orchestrator extracted upstream.
  *
@@ -24,10 +24,10 @@ import org.springframework.stereotype.Component;
  *   <li>{@code graphEntityIds} → {@code graph_entity_ids}</li>
  * </ul>
  *
- * <p>Both M2 enriched schemas guarantee all three fields are present
+ * <p>Both enriched schemas guarantee all three fields are present
  * ({@code configs/fraud/enriched-schema.avsc},
  * {@code configs/security/enriched-schema.avsc}). A missing field means
- * the upstream M2 contract has changed — fail fast with an
+ * the upstream contract has changed — fail fast with an
  * {@link IllegalArgumentException}.
  */
 @Component
@@ -57,7 +57,7 @@ public class DeliberationRequestTranslator {
     /**
      * Pull a non-null string field by name. Throws if the field is missing,
      * is the wrong type, or is null at runtime — all three of those mean the
-     * upstream M2 schema changed without M6 catching up.
+     * upstream schema changed without the orchestrator catching up.
      */
     private static String stringField(IndexedRecord record, String fieldName) {
         Schema.Field field = record.getSchema().getField(fieldName);

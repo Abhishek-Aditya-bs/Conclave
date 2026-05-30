@@ -5,21 +5,21 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Java-side mirror of the M5 {@code Decision} proto message, plus the
+ * Java-side mirror of the judge's {@code Decision} proto message, plus the
  * orchestrator-only metadata we persist alongside it.
  *
- * <p>Two layers of stamping happen between M5 and the decisions table:
+ * <p>Two layers of stamping happen between the judge and the decisions table:
  * <ol>
- *   <li>M5 returns score / verdict / explanation / factors / latency /
+ *   <li>The judge returns score / verdict / explanation / factors / latency /
  *       judge_provider / judge_model — those map 1:1 from the proto.</li>
  *   <li>The orchestrator stamps {@link #decisionId} (a fresh UUID), {@link #createdAt},
  *       and keeps the {@link #enrichedEventJson} payload it sent so the audit
- *       UI / replay endpoint (M7) can reconstruct the evidence without
+ *       UI / replay endpoint can reconstruct the evidence without
  *       walking back to Kafka.</li>
  * </ol>
  *
- * <p>{@code verdictLabel} is a string here rather than an enum because M5
- * is the source of truth for the verdict vocabulary; if M5 grows a new
+ * <p>{@code verdictLabel} is a string here rather than an enum because the judge
+ * is the source of truth for the verdict vocabulary; if the judge grows a new
  * label (e.g. "REVIEW_AUTO"), we should be permissive on the consumer side
  * and validate at the audit boundary instead.
  */
@@ -27,9 +27,9 @@ public record DecisionRecord(
         UUID decisionId,
         String eventId,
         String domain,
-        // Identifier the M3 baseline service was keyed on (cardholderId for
+        // Identifier the baseline service was keyed on (cardholderId for
         // fraud, principalId for security). Persisted as a first-class column
-        // so the M7 audit API can filter decisions by entity without parsing
+        // so the audit API can filter decisions by entity without parsing
         // {@code enrichedEventJson} on every query.
         String baselineEntityId,
         double score,

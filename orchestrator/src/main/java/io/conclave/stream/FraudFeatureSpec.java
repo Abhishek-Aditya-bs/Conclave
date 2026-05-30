@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
- * M2 feature-extraction spec for the fraud configuration.
+ * Feature-extraction spec for the fraud configuration.
  *
  * <p>Computed features:
  * <ul>
@@ -31,9 +31,9 @@ import org.springframework.stereotype.Component;
  *   <li>{@code binRiskScore} — deterministic synthetic risk score in {@code [0, 1)}
  *       derived from the BIN. Placeholder; real BIN intelligence belongs in a side-input
  *       topic the topology can KTable-join against (left for a future task).</li>
- *   <li>{@code baselineEntityId} — the cardholderId, which M3 will use to fetch the
+ *   <li>{@code baselineEntityId} — the cardholderId, which the baseline service uses to fetch the
  *       behavioral baseline embedding.</li>
- *   <li>{@code graphEntityIds} — the entity identifiers M4 considers (cardholder, device,
+ *   <li>{@code graphEntityIds} — the entity identifiers the graph reasoner considers (cardholder, device,
  *       IP, merchant).</li>
  * </ul>
  */

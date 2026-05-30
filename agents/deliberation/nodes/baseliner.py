@@ -1,6 +1,6 @@
-"""Behavioral baseliner node — calls M3 over gRPC.
+"""Behavioral baseliner node — calls the baseline service over gRPC.
 
-If M3 is unreachable or returns an error we degrade gracefully: the
+If the baseline service is unreachable or returns an error we degrade gracefully: the
 node emits a ``baseline_finding=None`` and appends an entry to
 ``errors``. The judge node treats ``None`` as "no behavioral signal" and
 proceeds with the graph + feature evidence alone.
@@ -17,8 +17,8 @@ from deliberation.state import BaselineFinding, DeliberationState
 
 _LOG = logging.getLogger(__name__)
 
-# all-MiniLM-L6-v2 backing in M3. Surfaced to the judge prompt; the vector
-# itself lives in M3 — the agent never holds it.
+# all-MiniLM-L6-v2 backing in the baseline service. Surfaced to the judge prompt; the vector
+# itself lives in the baseline service — the agent never holds it.
 _EMBEDDING_DIM = 384
 
 
@@ -27,7 +27,7 @@ def make_baseliner_node(client: BaselineClient | None):
 
     Returns a closure rather than registering the client globally so
     tests can substitute mocks per-graph instead of per-process.
-    Passing ``client=None`` makes the node a no-op (useful when M3 is
+    Passing ``client=None`` makes the node a no-op (useful when the baseline service is
     not yet wired in some smoke tests).
     """
 
@@ -67,7 +67,7 @@ def make_baseliner_node(client: BaselineClient | None):
         except grpc.RpcError as exc:
             code = getattr(exc, "code", lambda: None)()
             _LOG.warning(
-                "baseliner: M3 gRPC failure (code=%s) for entity=%s domain=%s",
+                "baseliner: baseline gRPC failure (code=%s) for entity=%s domain=%s",
                 code,
                 entity_id,
                 domain,
@@ -76,7 +76,7 @@ def make_baseliner_node(client: BaselineClient | None):
                 "baseline_finding": None,
                 "errors": [f"baseliner: gRPC error {code}: {exc}"],
             }
-        except Exception as exc:  # noqa: BLE001 — defensive, M5 must never crash mid-graph
+        except Exception as exc:  # noqa: BLE001 — defensive, the deliberation must never crash mid-graph
             _LOG.exception("baseliner: unexpected failure")
             return {
                 "baseline_finding": None,

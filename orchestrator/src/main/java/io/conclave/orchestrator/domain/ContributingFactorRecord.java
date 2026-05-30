@@ -2,7 +2,7 @@ package io.conclave.orchestrator.domain;
 
 /**
  * One per-decision driver, mirroring the {@code ContributingFactor} proto
- * message M5 emits.
+ * message the judge emits.
  *
  * <p>{@code weight} is signed in {@code [-1, 1]}: positive nudges toward
  * BLOCK, negative toward ALLOW, zero is informational only. {@code evidence}

@@ -14,7 +14,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // Forward /api requests to the orchestrator running on the host
-      // (the M8 docker-compose stack maps orchestrator to localhost:8080).
+      // (the docker-compose stack maps orchestrator to localhost:8080).
       "/api": {
         target: "http://localhost:8080",
         changeOrigin: true,

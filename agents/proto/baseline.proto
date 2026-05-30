@@ -1,4 +1,4 @@
-// CONCLAVE — M3 Behavioral Baseline Service gRPC contract.
+// CONCLAVE — Behavioral Baseline Service gRPC contract.
 //
 // Two RPCs: getBaseline (read-only) and updateBaseline (writes/updates an
 // EMA-rolling embedding for an entity within a domain).

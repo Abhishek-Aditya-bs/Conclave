@@ -1,4 +1,4 @@
-"""CONCLAVE deliberation orchestrator — M5.
+"""CONCLAVE deliberation orchestrator.
 
 The public surface is intentionally small. External callers should use the
 gRPC server in ``deliberation.server``; everything else is implementation

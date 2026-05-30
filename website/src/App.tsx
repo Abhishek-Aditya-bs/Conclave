@@ -6,8 +6,9 @@ import { useState, type ReactNode } from "react";
    theme tokens (from index.css) + hand-authored inline SVG diagrams.
    ──────────────────────────────────────────────────────────────────────── */
 
-const REPO = "https://github.com/anthropics/conclave";
+const REPO = "https://github.com/Abhishek-Aditya-bs/Conclave";
 const LIVE = "https://conclave-4q9.pages.dev";
+const PAPER = "/conclave.pdf";
 
 // Diagram palette — three signal colors + verdict, reused across every SVG so
 // the whole site reads as one system. (Baseliner=teal, Graph=violet, Judge=amber.)
@@ -34,6 +35,7 @@ export default function App() {
         <Architecture />
         <Domains />
         <Performance />
+        <Paper />
         <Quickstart />
       </main>
       <Footer />
@@ -122,6 +124,7 @@ function Nav() {
     ["How it works", "#how"],
     ["Architecture", "#architecture"],
     ["Domains", "#domains"],
+    ["Paper", "#paper"],
     ["Start", "#start"],
   ];
   return (
@@ -544,9 +547,11 @@ function CosineDiagram() {
         <line x1="70" y1="248" x2="322" y2="138" stroke={C.ink} strokeWidth="2.5" markerEnd="url(#ahv)" />
         <line x1="70" y1="248" x2="322" y2="196" stroke={C.teal} strokeWidth="2.5" markerEnd="url(#aht)" />
 
-        {/* angle arc + θ between profile and normal */}
-        <path d="M150 213 A 86 86 0 0 1 158 188" fill="none" stroke={C.mute} strokeWidth="1.3" />
-        <Chip x={130} y={212} text="θ" color={C.mute} size={12} anchor="middle" />
+        {/* angle arc + θ between the profile and the out-of-character vector.
+            Both endpoints sit at radius 50 from the origin (70,248), so it reads
+            as a true angle wedge at the vertex instead of a stray stroke. */}
+        <path d="M115.8 228 A 50 50 0 0 0 105 212.3" fill="none" stroke={C.mute} strokeWidth="1.3" />
+        <Chip x={140} y={199} text="θ" color={C.mute} size={12} anchor="middle" />
 
         <Chip x={262} y={62} text="out of character" color="#ff7a90" size={12} weight="600" />
         <Chip x={262} y={82} text="cos θ low → high anomaly" color={C.mute} size={10.5} />
@@ -823,14 +828,104 @@ function Performance() {
   );
 }
 
+/* ────────────────────────────────── paper ──────────────────────────────── */
+
+function Paper() {
+  const rows = [
+    { d: "Payment fraud", n: "332", auc: "0.999", block: "100% · 0 FP", flagged: "100% of attacks" },
+    { d: "Security / SOC", n: "254", auc: "0.819", block: "100% · 0 FP", flagged: "lateral movement" },
+  ];
+  return (
+    <Section id="paper" className="border-t border-border">
+      <div className="grid gap-10 md:grid-cols-[1fr_1.05fr] md:items-start">
+        <div>
+          <Eyebrow>Paper</Eyebrow>
+          <h2 className="mt-5 max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
+            One architecture, measured <span className="text-muted-foreground">end-to-end.</span>
+          </h2>
+          <p className="mt-4 text-muted-foreground">
+            An honest engineering paper on multi-agent deliberation as a first-class risk-decision
+            architecture. Every number is captured by running the live stack and joining persisted
+            decisions against leakage-proof ground-truth labels — no offline re-scoring. The judge
+            for these runs is <span className="text-foreground">gemini-3.1-flash-lite</span> via OpenRouter.
+          </p>
+          <p className="mt-4 text-muted-foreground">
+            The central finding is a deliberate negative result: detection tracks{" "}
+            <span className="text-foreground">evidence coverage</span>. Where an agent surfaces the
+            discriminative signal (fraud rings, lateral movement), detection is near-perfect; where
+            none does (security exfiltration / account-takeover), the judge has nothing to act on — a
+            judge weighs presented evidence, it is not an oracle.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              href={PAPER}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-opacity hover:opacity-90"
+            >
+              Read the PDF <Arrow />
+            </a>
+            <a
+              href={REPO}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <GitHubMark /> Source on GitHub
+            </a>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-border bg-card/60">
+          <div className="border-b border-border px-5 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Detection, end-to-end
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-[12px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-5 py-2.5 font-medium">Domain</th>
+                  <th className="px-3 py-2.5 font-medium">Decisions</th>
+                  <th className="px-3 py-2.5 font-medium">ROC-AUC</th>
+                  <th className="px-3 py-2.5 font-medium">Block prec.</th>
+                  <th className="px-5 py-2.5 font-medium">Flagged</th>
+                </tr>
+              </thead>
+              <tbody className="font-mono">
+                {rows.map((r) => (
+                  <tr key={r.d} className="border-b border-border/60 last:border-0">
+                    <td className="px-5 py-3 font-sans text-foreground">{r.d}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{r.n}</td>
+                    <td className="px-3 py-3 text-foreground">{r.auc}</td>
+                    <td className="px-3 py-3 text-foreground">{r.block}</td>
+                    <td className="px-5 py-3 text-muted-foreground">{r.flagged}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="space-y-1.5 px-5 py-4 text-xs text-muted-foreground">
+            <p>
+              <span className="text-foreground">Fraud:</span> zero false-positive blocks; every injected
+              attack flagged at review-or-higher; 98.9% precision at FPR&nbsp;≤&nbsp;1%.
+            </p>
+            <p>
+              <span className="text-foreground">Latency:</span> behavioral lookup p99 0.74&nbsp;ms · graph
+              query p99 6&nbsp;ms · end-to-end dominated by the LLM judge (p50 ≈ 1.8&nbsp;s).
+            </p>
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 /* ──────────────────────────────── quickstart ───────────────────────────── */
 
 function Quickstart() {
   const cmds = [
-    ["git clone https://github.com/anthropics/conclave && cd conclave", "comment"],
-    ["cp .env.example .env", "# serving mode: add a cloud API key"],
-    ["./scripts/up.sh local fraud", "# build + boot the whole stack"],
-    ["./scripts/seed.sh fraud", "# fire a labeled, multi-day burst"],
+    ["git clone https://github.com/Abhishek-Aditya-bs/Conclave && cd Conclave", "comment"],
+    ["cp .env.example .env", "# add your key (OpenRouter is cheapest)"],
+    ["./scripts/up.sh", "# pick judge model + domain, then builds + boots"],
+    ["./scripts/seed.sh", "# fire a small labeled burst (prompts the domain)"],
     ["open http://localhost:8080/api/v1/decisions", ""],
     ["./scripts/dashboard.sh", "# live explorer → :5173"],
     ["./scripts/down.sh", "# tear it all down"],
@@ -844,19 +939,19 @@ function Quickstart() {
             Clone, then <span className="text-muted-foreground">one command.</span>
           </h2>
           <p className="mt-4 text-muted-foreground">
-            One script builds the jars, builds the images, and boots the full stack. Swap{" "}
-            <span className="font-mono text-foreground">fraud</span> for{" "}
-            <span className="font-mono text-foreground">security</span>, or{" "}
-            <span className="font-mono text-foreground">local</span> for{" "}
-            <span className="font-mono text-foreground">serving</span> — same images either way.
+            Run <span className="font-mono text-foreground">up.sh</span> with no arguments and it walks you through
+            the judge model and domain, validates your setup, then builds and boots the full stack. The default
+            judge is <span className="text-foreground">gemini-3.1-flash-lite</span> via OpenRouter — fast and cheap.
+            Both <span className="text-foreground">fraud</span> and{" "}
+            <span className="text-foreground">security</span> run on the same images — try one, then the other.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-muted-foreground">
-            <li>Prereqs: Docker Desktop · JDK 25 · Maven · uv · Node 20+</li>
+            <li>Prereqs: Docker Desktop · JDK 25 · Maven · uv · Node 20+ · optional gum for the picker</li>
             <li>
-              <span className="text-foreground">local</span> runs the judge on your own Ollama — no API key.
+              <span className="text-foreground">serving</span> uses OpenRouter, OpenAI, or Claude — any OpenAI-compatible endpoint. Keys live in a git-ignored <span className="font-mono">.env</span>.
             </li>
             <li>
-              <span className="text-foreground">serving</span> uses Claude or any OpenAI-compatible endpoint.
+              <span className="text-foreground">local</span> runs the judge on your own Ollama — no API key, auto-started for you (slower per call).
             </li>
           </ul>
           <a
@@ -907,6 +1002,7 @@ function Footer() {
         <div className="flex items-center gap-6 text-sm text-muted-foreground">
           <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
           <a href="#architecture" className="transition-colors hover:text-foreground">Architecture</a>
+          <a href={PAPER} target="_blank" rel="noreferrer" className="transition-colors hover:text-foreground">Paper</a>
           <a href={LIVE} className="transition-colors hover:text-foreground">Live</a>
           <a href={REPO} className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
             <GitHubMark /> GitHub

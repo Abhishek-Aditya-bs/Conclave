@@ -12,7 +12,7 @@ import java.util.UUID;
  * present here.
  *
  * <p>Serialized JSON shape (snake_case via Jackson default) mirrors the
- * record fields. M10 consumes this directly.
+ * record fields. The dashboard consumes this directly.
  */
 public record DecisionSummary(
         UUID decisionId,

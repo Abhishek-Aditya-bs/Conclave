@@ -2,11 +2,11 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react
 import { cn } from "../../lib/utils";
 
 const fieldBase =
-  "h-8 rounded-md border border-[color:var(--color-border)] bg-[color:var(--color-bg-soft)] px-2 text-xs text-[color:var(--color-fg)] placeholder:text-[color:var(--color-fg-subtle)] focus:border-[color:var(--color-fg-subtle)] focus:outline-none";
+  "h-8 rounded-md border border-border bg-secondary px-2 text-xs text-foreground placeholder:text-muted-foreground transition-colors focus:border-ring focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40";
 
 export function Label({ children }: { children: ReactNode }) {
   return (
-    <span className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-[color:var(--color-fg-subtle)]">
+    <span className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
       {children}
     </span>
   );

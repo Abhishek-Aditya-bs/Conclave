@@ -1,12 +1,10 @@
-// CONCLAVE — M5 Deliberation Orchestrator gRPC contract.
+// CONCLAVE — Deliberation Orchestrator gRPC contract.
 //
 // One RPC: Deliberate. Caller hands over a JSON-serialized enriched event
-// (M2 output for the relevant domain), plus the orchestration-critical IDs
-// the graph already extracted. The judge agent sees the full event payload
-// in its prompt; the structural IDs are pulled out so we don't reparse JSON
-// in the orchestration code.
-//
-// The Decision shape matches spec §6 M5 exactly.
+// (the feature-extraction output for the relevant domain), plus the
+// orchestration-critical IDs the graph already extracted. The judge agent sees
+// the full event payload in its prompt; the structural IDs are pulled out so we
+// don't reparse JSON in the orchestration code.
 syntax = "proto3";
 
 package io.conclave.deliberation.v1;
@@ -26,13 +24,13 @@ message DeliberationRequest {
   string event_id = 1;
   // "fraud" | "security" — chooses graph templates + textualization style.
   string domain = 2;
-  // Identifier the M3 behavioral baseline service is keyed on.
+  // Identifier the behavioral baseline service is keyed on.
   // From EnrichedPaymentEvent.baselineEntityId / EnrichedAuthEvent.baselineEntityId.
   string baseline_entity_id = 3;
-  // Distinct node identifiers from this event the M4 graph reasoner may need.
+  // Distinct node identifiers from this event the graph reasoner may need.
   // From EnrichedPaymentEvent.graphEntityIds / EnrichedAuthEvent.graphEntityIds.
   repeated string graph_entity_ids = 4;
-  // Canonical event payload as JSON. M5 does NOT re-decode Avro; M6 is
+  // Canonical event payload as JSON. The judge does NOT re-decode Avro; the orchestrator is
   // expected to encode the EnrichedPaymentEvent / EnrichedAuthEvent into JSON
   // before calling. The judge prompt embeds this verbatim.
   string enriched_event_json = 5;
@@ -49,7 +47,7 @@ message Decision {
   // Downstream consumers (step-up auth, SOC triage) read this as the headline.
   string verdict_label = 2;
   // Markdown-formatted human-readable explanation. Targets a SOC analyst /
-  // fraud reviewer reading the audit UI in M7. Multi-paragraph allowed.
+  // fraud reviewer reading the audit UI. Multi-paragraph allowed.
   string verdict_explanation_md = 3;
   // Per-factor breakdown. Order is judge-determined (most influential first).
   repeated ContributingFactor contributing_factors = 4;
@@ -58,7 +56,7 @@ message Decision {
   int64 latency_ms = 5;
   // Which provider produced this decision — "anthropic" | "ollama".
   // Surface this in the audit UI; benchmark numbers only ever quote
-  // anthropic-backed runs (spec §5 caveat).
+  // anthropic-backed runs.
   string judge_provider = 6;
   // Model identifier used by that provider (e.g. "claude-haiku-4-5-20251001",
   // "qwen3:8b"). Free-form string — provider-defined naming.

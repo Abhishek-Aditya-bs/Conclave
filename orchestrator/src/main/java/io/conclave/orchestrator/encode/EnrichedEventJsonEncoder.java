@@ -11,12 +11,12 @@ import org.apache.avro.generic.IndexedRecord;
 import org.springframework.stereotype.Component;
 
 /**
- * Avro → clean JSON for M5's {@code DeliberationRequest.enriched_event_json} field.
+ * Avro → clean JSON for the judge's {@code DeliberationRequest.enriched_event_json} field.
  *
  * <p>Avro's built-in {@code JsonEncoder} emits an Avro-specific JSON shape:
  * union types are wrapped as {@code {"string": "DE"}} rather than just
  * {@code "DE"}, and timestamps emit as numbers without preserving the
- * logical type. M5's Python {@code feature_node} expects plain JSON
+ * logical type. The judge's Python {@code feature_node} expects plain JSON
  * (field name → value, no union wrapping, Instants as epoch ms), so we
  * walk the schema ourselves.
  *
@@ -24,9 +24,9 @@ import org.springframework.stereotype.Component;
  * for stable, deterministic output (no indentation, insertion-order
  * field iteration via {@link LinkedHashMap}).
  *
- * <p>This translation is the M6 ↔ M5 contract glue: any field added to
- * the M2 enriched-schema flows through here without code changes, and
- * the M5 Python fixtures match the shape produced by this encoder.
+ * <p>This translation is the orchestrator ↔ judge contract glue: any field added to
+ * the enriched-schema flows through here without code changes, and
+ * the judge's Python fixtures match the shape produced by this encoder.
  */
 @Component
 public class EnrichedEventJsonEncoder {
@@ -53,7 +53,7 @@ public class EnrichedEventJsonEncoder {
     private Map<String, Object> toMap(IndexedRecord record) {
         Schema schema = record.getSchema();
         // LinkedHashMap preserves field order from the schema — useful for
-        // log readability and for prompt-cache stability on the M5 side.
+        // log readability and for prompt-cache stability on the judge side.
         Map<String, Object> map = new LinkedHashMap<>();
         List<Schema.Field> fields = schema.getFields();
         for (Schema.Field field : fields) {
@@ -71,7 +71,7 @@ public class EnrichedEventJsonEncoder {
         if (value instanceof IndexedRecord nested) {
             return toMap(nested);
         }
-        // Instants come from Avro's timestamp-millis logical type. M5's
+        // Instants come from Avro's timestamp-millis logical type. The judge's
         // Python feature_node expects epoch millis (long), not ISO 8601 —
         // matches the canonical fixture shape in agents/tests/conftest.py.
         if (value instanceof Instant instant) {

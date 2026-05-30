@@ -14,20 +14,23 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Sync gRPC client for the M5 {@code DeliberationService}.
+ * Sync gRPC client for the {@code DeliberationService}.
  *
  * <p>One channel per server lifetime — channels are thread-safe and pool
  * internally. The owning {@code @Configuration} class manages the channel
  * lifecycle; this client doesn't close it.
  *
- * <p>Per-call deadline defaults to 1500ms — that's the M5 600ms p99 target
- * plus headroom for network + a single retry slot the orchestrator hasn't
- * implemented yet. {@link StatusRuntimeException} propagates to the
- * caller; the orchestrator catches it and routes to the DLQ.
+ * <p>Per-call deadline defaults to 30s — the LLM judge can take tens of seconds
+ * (local CPU Ollama: 60-90s; cloud models often &gt; 1.5s), so the deadline must
+ * comfortably exceed the judge's response time or every call is cancelled
+ * (DEADLINE_EXCEEDED) and no decision is persisted. The deployed value comes
+ * from {@code conclave.orchestrator.deliberation-deadline-ms}
+ * ({@code DELIBERATION_DEADLINE_MS}). {@link StatusRuntimeException} propagates
+ * to the caller; the orchestrator catches it and routes to the DLQ.
  */
 public class DeliberationClient {
 
-    private static final long DEFAULT_DEADLINE_MS = 1500L;
+    private static final long DEFAULT_DEADLINE_MS = 30_000L;
 
     private final DeliberationServiceGrpc.DeliberationServiceBlockingStub stub;
     private final long deadlineMs;
@@ -44,12 +47,12 @@ public class DeliberationClient {
     }
 
     /**
-     * Call M5 with the proto request; convert the response to a
+     * Call the judge with the proto request; convert the response to a
      * {@link DecisionRecord} stamped with a fresh decision UUID and
      * the orchestrator's wall-clock {@code createdAt}.
      *
      * <p>The {@code latencyMs} field on the resulting record comes from
-     * the M5 response (the server-side wallclock), NOT from the
+     * the judge's response (the server-side wallclock), NOT from the
      * orchestrator-side round-trip — that's what the audit dashboard
      * and the benchmark code both want. The orchestrator measures its
      * own latency separately.

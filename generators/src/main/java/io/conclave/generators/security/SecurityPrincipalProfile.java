@@ -8,7 +8,7 @@ import java.util.Random;
 /**
  * A stable synthetic principal (user/service account) reused across many days of auth
  * events. Fixes the things that should stay constant for a real principal — a small home
- * host pool, a preferred auth method, a user agent, a privilege flag — so the M3 baseline
+ * host pool, a preferred auth method, a user agent, a privilege flag — so the baseline
  * converges to a per-principal steady state that a later anomaly (lateral movement, ATO,
  * exfiltration) can deviate from. Heterogeneity across the population (different host
  * pools, methods, privilege) gives the realistic spread of behaviour benchmarking needs.

@@ -31,7 +31,7 @@ import org.springframework.stereotype.Repository;
  * worth of SQL); see {@link #appendWhere} for the predicate matrix.
  *
  * <p>Gated behind {@code conclave.orchestrator.enabled} for the same
- * reason as the M6 components (so the M1/M2 ITs that skip Postgres
+ * reason as the orchestrator components (so the ingest/stream ITs that skip Postgres
  * still boot cleanly).
  */
 @Repository

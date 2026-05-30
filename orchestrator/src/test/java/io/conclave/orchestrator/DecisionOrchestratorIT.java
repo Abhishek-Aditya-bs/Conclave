@@ -42,20 +42,20 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * End-to-end IT for M6's happy path under the fraud profile:
+ * End-to-end IT for the orchestrator's happy path under the fraud profile:
  * <pre>
  *   produce EnrichedPaymentEvent on events.fraud.enriched
  *     → orchestrator consumes
- *     → calls our in-process mock M5 over real Netty gRPC
+ *     → calls our in-process mock judge over real Netty gRPC
  *     → persists to Postgres (Testcontainers)
  *     → emits JSON on decisions.fraud
  * </pre>
  *
  * <p>Uses single Kafka + Postgres containers reused across the class.
- * The mock M5 is a real Netty gRPC server bound to a free loopback port
+ * The mock judge is a real Netty gRPC server bound to a free loopback port
  * so the production transport (grpc-netty-shaded) runs end to end.
  *
- * <p>M2's Kafka Streams topology also boots under the fraud profile —
+ * <p>The feature-extraction Kafka Streams topology also boots under the fraud profile —
  * it reads from {@code events.fraud.raw} (which we never publish to in
  * this IT) and writes to {@code events.fraud.enriched}, so it sits idle
  * while we publish enriched events directly. State-dir is per-class so
@@ -150,7 +150,7 @@ class DecisionOrchestratorIT {
             assertThat(payload.get("contributing_factors").isArray()).isTrue();
         }
 
-        // 3. The orchestrator forwarded the right request to M5.
+        // 3. The orchestrator forwarded the right request to the judge.
         DeliberationRequest received = mockM5.lastRequest();
         assertThat(received).isNotNull();
         assertThat(received.getEventId()).isEqualTo("evt-it-1");
@@ -238,7 +238,7 @@ class DecisionOrchestratorIT {
         }
     }
 
-    /** Scripted M5 servicer; one-shot response or error per test. */
+    /** Scripted judge servicer; one-shot response or error per test. */
     static final class SpecificMockServer
             extends DeliberationServiceGrpc.DeliberationServiceImplBase {
         private final Server server;

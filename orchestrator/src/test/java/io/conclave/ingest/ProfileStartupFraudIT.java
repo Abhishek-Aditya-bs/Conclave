@@ -36,12 +36,12 @@ import org.testcontainers.utility.DockerImageName;
  * that {@link IngestProperties} bind to {@link EventDomain#FRAUD}, that the raw topic gets
  * created with the configured partition count, and that one round-trip Avro send works.
  *
- * <p>Companion: {@link ProfileStartupSecurityIT}. Together they prove the M8 promise that
+ * <p>Companion: {@link ProfileStartupSecurityIT}. Together they prove that
  * "both configurations boot from the same binary via env vars."
  */
 @Testcontainers
-// conclave.orchestrator.enabled=false drops the M6 slice so this IT
-// doesn't need Postgres or a reachable M5 to boot.
+// conclave.orchestrator.enabled=false drops the orchestrator slice so this IT
+// doesn't need Postgres or a reachable judge to boot.
 @SpringBootTest(
         classes = ConclaveApplication.class,
         properties = "conclave.orchestrator.enabled=false")

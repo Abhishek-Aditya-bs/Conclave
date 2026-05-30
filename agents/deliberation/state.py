@@ -6,7 +6,7 @@ node that catches an exception can append context without clobbering the
 sibling branches that succeeded.
 
 The ``Decision`` dataclass mirrors the proto message in
-``deliberation.proto`` field-for-field; see spec §6 M5 for the contract.
+``deliberation.proto`` field-for-field — the proto is the contract.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from typing import Annotated, Any, TypedDict
 class VerdictLabel(StrEnum):
     """Bucketed risk verdict.
 
-    Threshold mapping is spec §6 M5 + ADR-004:
+    Threshold mapping (ADR-004):
       * score < 0.30 → ALLOW
       * 0.30 ≤ score < 0.70 → REVIEW
       * score ≥ 0.70 → BLOCK
@@ -118,20 +118,20 @@ class BaselineFinding:
     embedding_dim: int  # 384 for the all-MiniLM-L6-v2 backing
     last_updated_epoch_ms: int = 0
     # Cosine similarity of the current event's embedding to the entity's rolling
-    # baseline ([-1, 1]). Populated by the baseliner node from M3's ScoreEvent;
+    # baseline ([-1, 1]). Populated by the baseliner node from the baseline ScoreEvent;
     # the judge reads it as "how much does this event look like the entity's
-    # history". None when M3 was not consulted or the entity is cold-start.
+    # history". None when the baseline was not consulted or the entity is cold-start.
     cosine_similarity: float | None = None
-    # Behavioral anomaly score in [0, 1] from M3's ScoreEvent (0 = matches the
-    # entity's history, 1 = maximally deviant). None when M3 was not consulted.
+    # Behavioral anomaly score in [0, 1] from the baseline ScoreEvent (0 = matches the
+    # entity's history, 1 = maximally deviant). None when the baseline was not consulted.
     anomaly_score: float | None = None
-    # Free-form note the baseliner can emit (e.g. "M3 unreachable, degraded").
+    # Free-form note the baseliner can emit (e.g. "baseline unreachable, degraded").
     note: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class BaselineScore:
-    """Result of M3's ScoreEvent RPC.
+    """Result of the baseline ScoreEvent RPC.
 
     Returned by ``BaselineClient.score_event``; the baseliner node folds it into
     a ``BaselineFinding``. ``cosine_similarity`` is only meaningful when

@@ -5,7 +5,7 @@ import org.apache.avro.specific.SpecificRecord;
 import org.springframework.kafka.support.SendResult;
 
 /**
- * Producer SDK for the M1 raw-event topics.
+ * Producer SDK for the raw-event topics.
  *
  * <p>Implementations are expected to be thread-safe and to use the event's {@code eventId}
  * field as the Kafka record key, so downstream consumers can rely on per-event ordering

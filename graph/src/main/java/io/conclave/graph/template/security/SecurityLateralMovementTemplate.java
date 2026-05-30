@@ -22,7 +22,10 @@ import org.springframework.stereotype.Component;
  *   <li>{@code sampleHosts} (List&lt;String&gt;) — first 15 host IDs.</li>
  * </ul>
  *
- * <p>Risk signal: 0 below 5 hosts, otherwise {@code min(1.0, hostCount / 20.0)}.
+ * <p>Risk signal: 0 below 5 hosts. At/above the 5-host threshold a fan-out is
+ * suspicious; risk ramps from 0.60 at 5 hosts, crossing the 0.80 "confirmed lateral
+ * movement" mark at 6 distinct hosts and saturating at 1.0 by 7. The curve is
+ * count-driven (a real structural property of the graph), never inflated.
  *
  * <p>Depth: 1 hop. Bounded.
  */
@@ -58,14 +61,27 @@ public class SecurityLateralMovementTemplate implements GraphTemplate {
         long hostCount = rec.get("hostCount").asLong();
         List<String> hosts = rec.get("sampleHosts").asList(v -> v.asString());
 
-        double risk = hostCount >= 5
-                ? Math.min(1.0, hostCount / 20.0)
-                : 0.0;
+        double risk = riskFor(hostCount);
 
         Map<String, Object> attrs = new LinkedHashMap<>();
         attrs.put("hostCount", hostCount);
         attrs.put("sampleHosts", hosts);
 
         return new GraphFinding(NAME, principalId, "security", attrs, risk, 0L);
+    }
+
+    /**
+     * Count-driven risk curve. Below 5 distinct hosts there is no lateral-movement
+     * signature (risk 0). At the 5-host threshold the fan-out is suspicious (0.60); risk
+     * then ramps to 0.80 at 6 hosts ("confirmed lateral movement", BLOCK-grade) and
+     * saturates at 1.0 by 7. Reflects a real structural property of the graph — never
+     * inflated beyond what the host count supports.
+     */
+    static double riskFor(long hostCount) {
+        if (hostCount < 5) {
+            return 0.0;
+        }
+        double ramp = 0.60 + 0.20 * (hostCount - 5);
+        return Math.min(1.0, ramp);
     }
 }

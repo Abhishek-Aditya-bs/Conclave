@@ -5,9 +5,10 @@ import type {
   DecisionPage,
 } from "./types";
 
-// In dev, Vite proxies /api → http://localhost:8080. In prod (Cloudflare
-// Pages deploy), set VITE_API_BASE_URL to the orchestrator's hostname.
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+// In dev, Vite proxies /api → http://localhost:8080. In prod (any serving
+// deploy), set VITE_API_BASE_URL to the orchestrator's origin. Left empty it
+// stays relative (same-origin / proxied), so the dashboard is host-agnostic.
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 const HEADERS = { "content-type": "application/json" };
 
@@ -18,7 +19,7 @@ class ApiException extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, init);
+  const res = await fetch(`${API_BASE}${path}`, init);
   if (!res.ok) {
     let body: ApiError;
     try {

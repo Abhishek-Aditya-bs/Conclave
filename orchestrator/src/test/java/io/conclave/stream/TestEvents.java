@@ -9,9 +9,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Test-only event factories for the M2 stream-package tests. The M1 EventFactory is
+ * Test-only event factories for the stream-package tests. The ingest EventFactory is
  * package-private to {@code io.conclave.ingest}; this helper duplicates the minimum
- * needed for stream tests rather than relaxing M1's visibility.
+ * needed for stream tests rather than relaxing the ingest module's visibility.
  */
 final class TestEvents {
 
