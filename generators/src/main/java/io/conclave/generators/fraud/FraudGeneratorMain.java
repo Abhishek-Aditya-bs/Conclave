@@ -1,10 +1,12 @@
 package io.conclave.generators.fraud;
 
 import io.conclave.generators.CliOptions;
+import io.conclave.generators.Distributions;
 import io.conclave.generators.EventPublisher;
 import io.conclave.generators.GeneratorDomain;
 import io.conclave.generators.GeneratorRunner;
 import io.conclave.generators.Scenario;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +60,18 @@ public final class FraudGeneratorMain {
     /** Visible for tests so they can assert on planning logic without booting a producer. */
     public static List<Scenario> planScenarios(CliOptions opts, Random random, Instant baseTime) {
         List<Scenario> scenarios = new ArrayList<>();
+        // Multi-day, same-customer population first (opt-in via --customers) so the
+        // baseline has converged history before the adversarial scenarios deviate from it.
+        if (opts.populationCustomers() > 0) {
+            Instant windowStart = baseTime.minus(Duration.ofDays(opts.populationDays()));
+            scenarios.add(new MultiDayPopulationScenario(
+                    opts.populationCustomers(),
+                    opts.populationDays(),
+                    opts.eventsPerDay(),
+                    Distributions.parseOrMix(opts.distribution()),
+                    random,
+                    windowStart));
+        }
         if (opts.cleanCount() > 0) {
             scenarios.add(new CleanFraudScenario(opts.cleanCount(), random, baseTime));
         }

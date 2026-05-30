@@ -21,7 +21,10 @@ export SCHEMA_REGISTRY_URL="${SCHEMA_REGISTRY_URL:-http://localhost:8085}"
 
 if [ "$DOMAIN" = "fraud" ]; then
   MAIN="io.conclave.generators.fraud.FraudGeneratorMain"
-  DEFAULT_ARGS="--clean 200 --rings 2 --ato 1 --extra 1"
+  # Multi-day population (40 customers × 14 days × 3/day) builds real per-customer
+  # baselines BEFORE the adversarial campaigns deviate from them — so the M3
+  # cosine-similarity score has converged history to compare against.
+  DEFAULT_ARGS="--customers 40 --days 14 --events-per-day 3 --distribution mix --clean 200 --rings 2 --ato 1 --extra 1"
 else
   MAIN="io.conclave.generators.security.SecurityGeneratorMain"
   DEFAULT_ARGS="--clean 200 --rings 1 --ato 1 --extra 1"

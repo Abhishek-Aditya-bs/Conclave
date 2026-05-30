@@ -28,9 +28,15 @@ public final class CliOptions {
     private final int rings;
     private final int atoCampaigns;
     private final int extraCampaigns;
+    private final int populationCustomers;
+    private final int populationDays;
+    private final int eventsPerDay;
+    private final String distribution;
 
     private CliOptions(String bootstrapServers, String schemaRegistryUrl, long seed,
-                       int cleanCount, int rings, int atoCampaigns, int extraCampaigns) {
+                       int cleanCount, int rings, int atoCampaigns, int extraCampaigns,
+                       int populationCustomers, int populationDays, int eventsPerDay,
+                       String distribution) {
         this.bootstrapServers = bootstrapServers;
         this.schemaRegistryUrl = schemaRegistryUrl;
         this.seed = seed;
@@ -38,6 +44,10 @@ public final class CliOptions {
         this.rings = rings;
         this.atoCampaigns = atoCampaigns;
         this.extraCampaigns = extraCampaigns;
+        this.populationCustomers = populationCustomers;
+        this.populationDays = populationDays;
+        this.eventsPerDay = eventsPerDay;
+        this.distribution = distribution;
     }
 
     public static CliOptions parse(String[] args, Defaults defaults) {
@@ -48,6 +58,11 @@ public final class CliOptions {
         int rings = defaults.rings();
         int ato = defaults.atoCampaigns();
         int extra = defaults.extraCampaigns();
+        // Multi-day population (opt-in; off by default so existing runs are unchanged).
+        int customers = 0;
+        int days = 14;
+        int eventsPerDay = 3;
+        String distribution = "mix";
 
         int i = 0;
         while (i < args.length) {
@@ -68,13 +83,18 @@ public final class CliOptions {
                 case "--rings" -> rings = nonNegative(flag, value);
                 case "--ato" -> ato = nonNegative(flag, value);
                 case "--extra" -> extra = nonNegative(flag, value);
+                case "--customers" -> customers = nonNegative(flag, value);
+                case "--days" -> days = nonNegative(flag, value);
+                case "--events-per-day" -> eventsPerDay = nonNegative(flag, value);
+                case "--distribution" -> distribution = value;
                 default -> throw new IllegalArgumentException(
                         "unknown argument: " + flag + " — try --help. all args: " + Arrays.toString(args));
             }
             i += 2;
         }
 
-        return new CliOptions(bootstrap, registry, seed, cleanCount, rings, ato, extra);
+        return new CliOptions(bootstrap, registry, seed, cleanCount, rings, ato, extra,
+                customers, days, eventsPerDay, distribution);
     }
 
     private static int nonNegative(String flag, String raw) {
@@ -100,6 +120,10 @@ public final class CliOptions {
                   --rings <int>                ring/campaign count       (default %d)
                   --ato <int>                  ATO campaign count        (default %d)
                   --extra <int>                bust-out / exfil count    (default %d)
+                  --customers <int>            multi-day population size  (default 0 = off)
+                  --days <int>                 days of history per customer (default 14)
+                  --events-per-day <int>       events/customer/day        (default 3)
+                  --distribution <kind>        mix|gaussian|lognormal|pareto|uniform|bimodal (default mix)
                 """.formatted(d.cleanCount(), d.rings(), d.atoCampaigns(), d.extraCampaigns()));
     }
 
@@ -110,6 +134,10 @@ public final class CliOptions {
     public int rings() { return rings; }
     public int atoCampaigns() { return atoCampaigns; }
     public int extraCampaigns() { return extraCampaigns; }
+    public int populationCustomers() { return populationCustomers; }
+    public int populationDays() { return populationDays; }
+    public int eventsPerDay() { return eventsPerDay; }
+    public String distribution() { return distribution; }
 
     public record Defaults(int cleanCount, int rings, int atoCampaigns, int extraCampaigns) {}
 
