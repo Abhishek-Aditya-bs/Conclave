@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="460" viewBox="0 0 920 460" font-family="'JetBrains Mono','SFMono-Regular',ui-monospace,Menlo,Consolas,monospace">
+  <defs>
+    <marker id="t" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#37d6c2"/></marker>
+    <marker id="v" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#8b7bff"/></marker>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#ffb84d"/></marker>
+    <marker id="n" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#71717a"/></marker>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0 H0 V34" fill="none" stroke="#161616" stroke-width="1"/></pattern>
+  </defs>
+
+  <rect width="920" height="460" fill="#0a0a0a"/>
+  <rect width="920" height="460" fill="url(#grid)"/>
+
+  <!-- arrows -->
+  <path d="M460 64 V100"                          fill="none" stroke="#71717a" stroke-width="2" marker-end="url(#n)"/>
+  <path d="M400 144 C330 175 270 168 212 188"     fill="none" stroke="#37d6c2" stroke-width="2" marker-end="url(#t)"/>
+  <path d="M520 144 C590 175 650 168 708 188"     fill="none" stroke="#8b7bff" stroke-width="2" marker-end="url(#v)"/>
+  <path d="M210 252 C300 292 332 288 400 302"     fill="none" stroke="#37d6c2" stroke-width="2" marker-end="url(#t)"/>
+  <path d="M710 252 C620 292 588 288 520 302"     fill="none" stroke="#8b7bff" stroke-width="2" marker-end="url(#v)"/>
+  <path d="M460 358 V390"                          fill="none" stroke="#ffb84d" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- enriched event -->
+  <rect x="360" y="20" width="200" height="44" rx="9" fill="#161616" stroke="#3f3f46" stroke-width="1.5"/>
+  <text x="460" y="47" text-anchor="middle" fill="#e4e4e7" font-size="13.5" font-weight="600">enriched event</text>
+
+  <!-- feature -->
+  <rect x="360" y="100" width="200" height="44" rx="9" fill="#161616" stroke="#3f3f46" stroke-width="1.5"/>
+  <text x="460" y="121" text-anchor="middle" fill="#e4e4e7" font-size="13.5" font-weight="600">feature</text>
+  <text x="460" y="137" text-anchor="middle" fill="#71717a" font-size="10.5">distill the event</text>
+
+  <!-- baseliner (teal) -->
+  <rect x="80" y="190" width="260" height="62" rx="9" fill="#161616" stroke="#3f3f46" stroke-width="1.5"/>
+  <rect x="92" y="208" width="6" height="26" rx="2" fill="#37d6c2"/>
+  <text x="218" y="216" text-anchor="middle" fill="#e4e4e7" font-size="13.5" font-weight="600">behavioral baseliner</text>
+  <text x="218" y="234" text-anchor="middle" fill="#71717a" font-size="10.5">cosine vs. rolling embedding</text>
+  <text x="210" y="272" text-anchor="middle" fill="#52525b" font-size="10">MiniLM 384-d &#183; pgvector</text>
+
+  <!-- graph (violet) -->
+  <rect x="580" y="190" width="260" height="62" rx="9" fill="#161616" stroke="#3f3f46" stroke-width="1.5"/>
+  <rect x="592" y="208" width="6" height="26" rx="2" fill="#8b7bff"/>
+  <text x="718" y="216" text-anchor="middle" fill="#e4e4e7" font-size="13.5" font-weight="600">graph reasoner</text>
+  <text x="718" y="234" text-anchor="middle" fill="#71717a" font-size="10.5">rings &#183; lateral &#183; privileged access</text>
+  <text x="710" y="272" text-anchor="middle" fill="#52525b" font-size="10">Neo4j &#183; depth-bounded Cypher</text>
+
+  <!-- judge (amber) -->
+  <rect x="330" y="300" width="260" height="58" rx="9" fill="#161616" stroke="#3f3f46" stroke-width="1.5"/>
+  <rect x="342" y="316" width="6" height="26" rx="2" fill="#ffb84d"/>
+  <text x="466" y="325" text-anchor="middle" fill="#e4e4e7" font-size="13.5" font-weight="600">deliberating judge (LLM)</text>
+  <text x="466" y="343" text-anchor="middle" fill="#71717a" font-size="10.5">weighs every signal, anchors on direct evidence</text>
+
+  <!-- verdict -->
+  <rect x="270" y="390" width="380" height="54" rx="9" fill="#0e0e0e" stroke="#52525b" stroke-width="1.5"/>
+  <text x="460" y="414" text-anchor="middle" font-size="14" font-weight="700" letter-spacing="1">
+    <tspan fill="#34d399">ALLOW</tspan><tspan fill="#52525b"> &#183; </tspan><tspan fill="#ffb84d">REVIEW</tspan><tspan fill="#52525b"> &#183; </tspan><tspan fill="#fb7185">BLOCK</tspan>
+  </text>
+  <text x="460" y="432" text-anchor="middle" fill="#71717a" font-size="10.5">score &#8712; [0,1] &#183; contributing factors &#183; plain-English why</text>
+</svg>

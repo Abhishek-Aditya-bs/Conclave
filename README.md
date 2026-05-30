@@ -40,28 +40,9 @@ bolt the rest on:
 
 CONCLAVE answers **all three, together, per event** — then hands back a verdict and the *why*.
 
-```
-                          ┌──────────────────────────────┐
-   enriched event  ─────► │            FEATURE           │  distill the event
-                          └───────────────┬──────────────┘
-                              ┌────────────┴───────────┐
-                              ▼                         ▼
-                   ┌────────────────────┐    ┌────────────────────┐
-                   │ BEHAVIORAL         │    │ GRAPH REASONER      │
-                   │ BASELINER          │    │ Neo4j templates:    │
-                   │ cosine vs. rolling │    │ rings · lateral     │
-                   │ embedding profile  │    │ movement · access   │
-                   └─────────┬──────────┘    └──────────┬─────────┘
-                             └───────────┬──────────────┘
-                                         ▼
-                              ┌──────────────────────┐
-                              │  DELIBERATING JUDGE   │  weighs every signal
-                              │  (LLM)                │
-                              └──────────┬───────────┘
-                                         ▼
-                       ──►   ALLOW · REVIEW · BLOCK   +   score ∈ [0,1]
-                              +  contributing factors  +  plain-English why
-```
+<p align="center">
+  <img src="assets/deliberation.svg" alt="The four-agent deliberation graph" width="92%">
+</p>
 
 Every decision is persisted with its verdict, calibrated score, ranked contributing factors,
 and a Markdown rationale. If any agent — or the LLM itself — is down, the judge **falls back**
@@ -168,17 +149,9 @@ explanation — anchored on the strongest direct evidence, never on the easily-f
 
 ## Architecture
 
-```
-  PRODUCERS         ORCHESTRATOR (Kafka Streams)        AGENTS (LangGraph)           AUDIT
-  ─────────         ───────────────────────────        ──────────────────           ─────
-                                                        ┌─ behavioral baseliner ─┐
-  events.{d}.raw ─► enrich + feature-extract ─► call ─► │  graph reasoner        │ ─► Decision ─► Postgres
-        │                    │                          └─ deliberating judge ───┘        │
-   (generators)      events.{d}.enriched          pgvector   Neo4j    LLM        REST /api/v1/decisions
-                                                  (baselines)(graph)             + live dashboard
-
-  d = fraud | security     infra: Kafka · Schema Registry · Postgres(pgvector) · Neo4j
-```
+<p align="center">
+  <img src="assets/architecture.svg" alt="CONCLAVE data-plane and control-plane architecture" width="100%">
+</p>
 
 | Service | Role | Stack |
 |---|---|---|

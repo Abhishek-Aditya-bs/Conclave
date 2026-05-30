@@ -55,4 +55,7 @@ cd paper && latexmk -pdf conclave.tex
 | `references.bib` | bibliography |
 | `data/numbers.tex` | auto-generated metric macros (do not edit by hand) |
 | `data/*_hist.dat`, `data/latency.dat` | auto-generated plot data |
-| `conclave.bbl` | resolved bibliography (kept for arXiv upload) |
+| `conclave.pdf` | the built paper (7 pages) |
+
+Build artifacts (`*.aux`, `*.bbl`, `*.log`, …) are git-ignored; `latexmk` regenerates
+them. For an arXiv upload, run `latexmk -pdf` once and include the generated `conclave.bbl`.

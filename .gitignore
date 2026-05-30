@@ -99,7 +99,7 @@ docker-data/
 /spec.md
 /docs/
 
-# ---------- LaTeX (paper build artifacts; keep .tex/.bbl/.pdf) ----------
+# ---------- LaTeX (paper build artifacts; keep .tex/.bib/.pdf) ----------
 *.aux
 *.fls
 *.fdb_latexmk
@@ -109,3 +109,4 @@ docker-data/
 *.bcf
 *.run.xml
 *.blg
+*.bbl
