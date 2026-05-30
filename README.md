@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://conclave-4q9.pages.dev"><b>Live site</b></a> &nbsp;·&nbsp;
+  <a href="https://conclave-website.pages.dev"><b>Live site</b></a> &nbsp;·&nbsp;
   <a href="paper/conclave.pdf"><b>Paper</b></a> &nbsp;·&nbsp;
   <a href="#quickstart"><b>Quickstart</b></a> &nbsp;·&nbsp;
   <a href="#how-it-works"><b>How it works</b></a> &nbsp;·&nbsp;

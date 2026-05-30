@@ -7,7 +7,7 @@ import { useState, type ReactNode } from "react";
    ──────────────────────────────────────────────────────────────────────── */
 
 const REPO = "https://github.com/Abhishek-Aditya-bs/Conclave";
-const LIVE = "https://conclave-4q9.pages.dev";
+const LIVE = "https://conclave-website.pages.dev";
 const PAPER = "/conclave.pdf";
 
 // Diagram palette — three signal colors + verdict, reused across every SVG so
