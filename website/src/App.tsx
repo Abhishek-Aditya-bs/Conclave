@@ -279,6 +279,26 @@ function Node({
   );
 }
 
+// A floating label with a dark "halo" behind it so text never sits on top of a
+// line/arrow. JetBrains Mono is monospace, so the box width is predictable.
+function Chip({
+  x, y, text, color = C.ink, size = 11, anchor = "start", weight = "400",
+}: {
+  x: number; y: number; text: string; color?: string; size?: number;
+  anchor?: "start" | "middle" | "end"; weight?: string;
+}) {
+  const w = text.length * size * 0.62 + 12;
+  const rx = anchor === "middle" ? x - w / 2 : anchor === "end" ? x - w + 6 : x - 6;
+  return (
+    <g>
+      <rect x={rx} y={y - size + 2} width={w} height={size + 7} rx="5" fill={C.panel} stroke={C.line} strokeOpacity="0.6" />
+      <text x={x} y={y} textAnchor={anchor} fontSize={size} fontWeight={weight} fill={color}>
+        {text}
+      </text>
+    </g>
+  );
+}
+
 /* ──────────────────────────────── problem ──────────────────────────────── */
 
 function Problem() {
@@ -339,12 +359,12 @@ function ProblemDiagram() {
 
         {/* three lenses */}
         {[
-          { x: 120, y: 60, c: C.teal, t: "is it NORMAL", t2: "for this entity?" },
-          { x: 120, y: 170, c: C.violet, t: "is it part of", t2: "a bad PATTERN?" },
-          { x: 760, y: 115, c: C.amber, t: "can you EXPLAIN", t2: "the call — now?" },
+          { x: 120, y: 60, c: C.teal, t: "is it NORMAL", t2: "for this entity?", sx: 310, sy: 84, ex: 457, ey: 108 },
+          { x: 120, y: 170, c: C.violet, t: "is it part of", t2: "a bad PATTERN?", sx: 310, sy: 194, ex: 459, ey: 132 },
+          { x: 760, y: 115, c: C.amber, t: "can you EXPLAIN", t2: "the call — now?", sx: 760, sy: 139, ex: 543, ey: 119 },
         ].map((l, i) => (
           <g key={i}>
-            <line x1={l.x + (l.x < 500 ? 120 : 0)} y1={l.y + 24} x2="460" y2="115" stroke={l.c} strokeOpacity="0.5" strokeWidth="2" className="cv-flow-slow" />
+            <line x1={l.sx} y1={l.sy} x2={l.ex} y2={l.ey} stroke={l.c} strokeOpacity="0.5" strokeWidth="2" className="cv-flow-slow" />
             <rect x={l.x} y={l.y} width="190" height="48" rx="10" fill={C.panel} stroke={l.c} strokeOpacity="0.5" />
             <rect x={l.x} y={l.y} width="3.5" height="48" rx="2" fill={l.c} />
             <text x={l.x + 14} y={l.y + 21} fontSize="12.5" fontWeight="600" fill={C.ink}>{l.t}</text>
@@ -502,7 +522,7 @@ function Baseline() {
 function CosineDiagram() {
   return (
     <div className="rounded-2xl border border-border bg-card/40 p-3 sm:p-6">
-      <svg viewBox="0 0 460 320" className="w-full" role="img" aria-label="Cosine similarity to the behavioral profile">
+      <svg viewBox="0 0 540 300" className="w-full" role="img" aria-label="Cosine similarity to the behavioral profile">
         <defs>
           <marker id="ahv" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
             <path d="M0 0 L9 4.5 L0 9 z" fill={C.ink} />
@@ -516,26 +536,26 @@ function CosineDiagram() {
         </defs>
 
         {/* origin */}
-        <circle cx="80" cy="250" r="3.5" fill={C.mute} />
+        <circle cx="70" cy="248" r="3.5" fill={C.mute} />
 
-        {/* profile vector */}
-        <line x1="80" y1="250" x2="360" y2="120" stroke={C.ink} strokeWidth="2.5" markerEnd="url(#ahv)" />
-        <text x="368" y="116" fontSize="12" fontWeight="600" fill={C.ink}>profile</text>
-        <text x="300" y="150" fontSize="10.5" fill={C.mute}>EMA of past behavior</text>
+        {/* vectors fan from the origin; every label lives to the RIGHT of the
+            arrow tips, in clear space, with a halo — so nothing sits on a line. */}
+        <line x1="70" y1="248" x2="250" y2="64" stroke="#ff7a90" strokeWidth="2.5" markerEnd="url(#ahr)" />
+        <line x1="70" y1="248" x2="322" y2="138" stroke={C.ink} strokeWidth="2.5" markerEnd="url(#ahv)" />
+        <line x1="70" y1="248" x2="322" y2="196" stroke={C.teal} strokeWidth="2.5" markerEnd="url(#aht)" />
 
-        {/* normal event — small angle */}
-        <line x1="80" y1="250" x2="350" y2="160" stroke={C.teal} strokeWidth="2.5" markerEnd="url(#aht)" />
-        <text x="358" y="176" fontSize="11.5" fill={C.teal}>looks normal</text>
-        <text x="300" y="196" fontSize="10.5" fill={C.mute}>cos θ high → low anomaly</text>
+        {/* angle arc + θ between profile and normal */}
+        <path d="M150 213 A 86 86 0 0 1 158 188" fill="none" stroke={C.mute} strokeWidth="1.3" />
+        <Chip x={130} y={212} text="θ" color={C.mute} size={12} anchor="middle" />
 
-        {/* anomalous event — large angle */}
-        <line x1="80" y1="250" x2="250" y2="60" stroke="#ff7a90" strokeWidth="2.5" markerEnd="url(#ahr)" />
-        <text x="190" y="56" fontSize="11.5" fill="#ff7a90">out of character</text>
-        <text x="120" y="92" fontSize="10.5" fill={C.mute}>cos θ low → high anomaly</text>
+        <Chip x={262} y={62} text="out of character" color="#ff7a90" size={12} weight="600" />
+        <Chip x={262} y={82} text="cos θ low → high anomaly" color={C.mute} size={10.5} />
 
-        {/* angle arc */}
-        <path d="M150 219 A 74 74 0 0 1 168 196" fill="none" stroke={C.mute} strokeWidth="1.3" />
-        <text x="150" y="208" fontSize="12" fill={C.mute}>θ</text>
+        <Chip x={334} y={136} text="profile" color={C.ink} size={12.5} weight="700" />
+        <Chip x={334} y={156} text="EMA of past behavior" color={C.mute} size={10.5} />
+
+        <Chip x={334} y={196} text="looks normal" color={C.teal} size={12} weight="600" />
+        <Chip x={334} y={216} text="cos θ high → low anomaly" color={C.mute} size={10.5} />
       </svg>
     </div>
   );
@@ -629,10 +649,15 @@ function PipelineDiagram() {
 
         {/* arrows */}
         <g fill="none" strokeWidth="2">
-          <path d="M190 146 H250" stroke={C.mute} markerEnd="url(#ahp)" />
+          {/* producers → enrich */}
+          <path d="M190 146 C 220 146, 222 106, 250 106" stroke={C.mute} markerEnd="url(#ahp)" />
+          {/* enrich → events.enriched (the topic the agents consume) */}
           <path d="M390 132 V158" stroke={C.mute} markerEnd="url(#ahp)" />
-          <path d="M530 106 C 560 106, 566 90, 596 90" stroke={C.teal} className="cv-flow" />
-          <path d="M530 138 C 560 138, 566 138, 596 138" stroke={C.violet} className="cv-flow" />
+          {/* events.enriched → agents: the agents consume the enriched stream */}
+          <path d="M530 180 C 566 180, 570 90, 596 90" stroke={C.teal} className="cv-flow" />
+          <path d="M530 180 C 566 180, 570 138, 596 138" stroke={C.violet} className="cv-flow" />
+          <path d="M530 180 C 566 180, 570 186, 596 186" stroke={C.amber} className="cv-flow" />
+          {/* judge → Decision → audit API */}
           <path d="M772 186 C 800 186, 800 106, 826 106" stroke={C.amber} className="cv-flow" />
           <path d="M901 132 V158" stroke={C.mute} markerEnd="url(#ahp)" />
         </g>
