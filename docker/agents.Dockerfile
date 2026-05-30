@@ -1,4 +1,4 @@
-# Runtime image for the M5 LangGraph deliberation orchestrator (Python).
+# Runtime image for the LangGraph deliberation service (Python).
 #
 # Built with uv-managed deps; deliberately small base. Generates protobuf
 # stubs at build time so the container is self-contained (the source-of-truth
@@ -25,6 +25,9 @@ RUN uv sync --no-dev --frozen --no-install-project 2>/dev/null \
 COPY agents/deliberation /app/deliberation
 COPY agents/proto /app/proto
 COPY agents/scripts /app/scripts
+# uv's build backend (hatchling) reads pyproject's `readme = "README.md"` when it
+# builds the editable project during `uv run`, so the README must exist in the image.
+COPY agents/README.md /app/README.md
 RUN uv run ./scripts/gen_protos.sh
 
 # Default ports: gRPC server on 9093.
