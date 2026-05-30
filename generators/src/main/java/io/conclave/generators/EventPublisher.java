@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Mirror of {@code io.conclave.ingest.KafkaEventProducer}'s contract: every event keyed by
  * its {@code eventId}, publish settings hardened to {@code acks=all} +
- * {@code enable.idempotence=true} (M1 spec, profile-startup ITs assert these).
+ * {@code enable.idempotence=true} (profile-startup ITs assert these).
  *
  * <p>Owns two producers — one Avro for raw events, one String for label JSON — so it can
  * be closed cleanly at the end of a generator run.
@@ -130,7 +130,7 @@ public class EventPublisher implements AutoCloseable {
     private static Properties baseProducerProps(String bootstrapServers) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        // Mirror M1's KafkaProducerConfig + application.yaml exactly.
+        // Mirror the ingest KafkaProducerConfig + application.yaml exactly.
         props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
         props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 5);

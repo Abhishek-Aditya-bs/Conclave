@@ -5,7 +5,7 @@ import java.util.Random;
 /**
  * Amount-distribution samplers for synthetic traffic. Different customers draw their
  * spend from different distributions so the population spans a realistic range of
- * behaviours — which is exactly what makes the M3 cosine-similarity baseline (and the
+ * behaviours — which is exactly what makes the cosine-similarity baseline (and the
  * deviation signal that flags ATO / bust-out) meaningful during benchmarking.
  *
  * <p>All samplers return an amount in <em>minor units</em> (cents), clamped to a sane

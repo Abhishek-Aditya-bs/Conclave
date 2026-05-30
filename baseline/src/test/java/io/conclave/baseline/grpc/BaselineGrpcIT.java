@@ -1,11 +1,14 @@
 package io.conclave.baseline.grpc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import io.conclave.baseline.BaselineApplication;
 import io.conclave.baseline.proto.BaselineServiceGrpc;
 import io.conclave.baseline.proto.GetBaselineRequest;
 import io.conclave.baseline.proto.GetBaselineResponse;
+import io.conclave.baseline.proto.ScoreEventRequest;
+import io.conclave.baseline.proto.ScoreEventResponse;
 import io.conclave.baseline.proto.UpdateBaselineRequest;
 import io.conclave.baseline.proto.UpdateBaselineResponse;
 import io.grpc.ManagedChannel;
@@ -135,5 +138,55 @@ class BaselineGrpcIT {
                 .setEventText("evt 3")
                 .build());
         assertThat(third.getBaseline().getEventCount()).isEqualTo(3L);
+    }
+
+    // ScoreEvent's textualization must match how the baseline is built, so NORMAL_TEXT
+    // (fed to UpdateBaseline) is exactly what BaselineText.of() produces for NORMAL_JSON.
+    private static final String NORMAL_TEXT =
+            "payment amount=medium currency=USD mcc=5411 billing=US shipping=US channel=WEB card_not_present";
+    private static final String NORMAL_JSON =
+            "{\"amountMinor\":5000,\"currency\":\"USD\",\"merchantCategoryCode\":5411,"
+          + "\"billingCountry\":\"US\",\"shippingCountry\":\"US\",\"channel\":\"WEB\",\"cardPresent\":false}";
+    private static final String DEVIANT_JSON =
+            "{\"amountMinor\":500000,\"currency\":\"USD\",\"merchantCategoryCode\":5944,"
+          + "\"billingCountry\":\"NG\",\"shippingCountry\":\"NG\",\"channel\":\"API\",\"cardPresent\":false}";
+
+    @Test
+    @DisplayName("ScoreEvent on a fresh entity reports cold-start with the neutral prior")
+    void scoreColdStart() {
+        ScoreEventResponse resp = stub.scoreEvent(ScoreEventRequest.newBuilder()
+                .setDomain("fraud")
+                .setEntityId("never_scored_" + UUID.randomUUID())
+                .setEnrichedEventJson(NORMAL_JSON)
+                .build());
+        assertThat(resp.getColdStart()).isTrue();
+        assertThat(resp.getEventCount()).isEqualTo(0L);
+        // Default conclave.baseline.cold-start-score.
+        assertThat(resp.getAnomalyScore()).isCloseTo(0.5, within(1e-6));
+    }
+
+    @Test
+    @DisplayName("ScoreEvent: a matching event scores ~0 anomaly; a deviating one scores higher")
+    void scoreMatchingVsDeviating() {
+        String entityId = "cust_score_" + UUID.randomUUID();
+        // Build a converged baseline from repeated identical 'normal' events.
+        for (int i = 0; i < 5; i++) {
+            stub.updateBaseline(UpdateBaselineRequest.newBuilder()
+                    .setDomain("fraud").setEntityId(entityId).setEventText(NORMAL_TEXT).build());
+        }
+
+        ScoreEventResponse normal = stub.scoreEvent(ScoreEventRequest.newBuilder()
+                .setDomain("fraud").setEntityId(entityId).setEnrichedEventJson(NORMAL_JSON).build());
+        ScoreEventResponse deviant = stub.scoreEvent(ScoreEventRequest.newBuilder()
+                .setDomain("fraud").setEntityId(entityId).setEnrichedEventJson(DEVIANT_JSON).build());
+
+        assertThat(normal.getColdStart()).isFalse();
+        assertThat(normal.getEventCount()).isEqualTo(5L);
+        // Identical textualization → identical embedding → cosine ~1, anomaly ~0.
+        assertThat(normal.getCosineSimilarity()).isGreaterThan(0.99);
+        assertThat(normal.getAnomalyScore()).isLessThan(0.05);
+        // A far-country, xlarge, different-MCC event looks unlike the history.
+        assertThat(deviant.getCosineSimilarity()).isLessThan(normal.getCosineSimilarity());
+        assertThat(deviant.getAnomalyScore()).isGreaterThan(normal.getAnomalyScore());
     }
 }

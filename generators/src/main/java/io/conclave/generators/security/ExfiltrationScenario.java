@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 
 /**
  * Exfiltration: a privileged identity touches a sequence of sensitive resources
- * inside one session, often outside business hours. M4's
+ * inside one session, often outside business hours. The graph reasoner's
  * {@code SecurityPrivilegedAccessTemplate} fires once any sensitive resource is
  * accessed; this scenario stacks accesses to make the verdict justification rich.
  */

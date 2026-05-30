@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * Wire format for the ground-truth label side topic. snake_case so it lines up with
- * the rest of the system's JSON payloads (M6 decisions, M7 audit API).
+ * the rest of the system's JSON payloads (orchestrator decisions, audit API).
  *
  * <p>{@code scenarioId} groups events that belong to the same adversarial campaign
  * (e.g. one card-testing ring). Useful for downstream eval grouping.

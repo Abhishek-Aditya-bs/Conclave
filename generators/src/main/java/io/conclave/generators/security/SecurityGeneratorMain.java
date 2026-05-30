@@ -5,6 +5,7 @@ import io.conclave.generators.EventPublisher;
 import io.conclave.generators.GeneratorDomain;
 import io.conclave.generators.GeneratorRunner;
 import io.conclave.generators.Scenario;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +59,17 @@ public final class SecurityGeneratorMain {
 
     public static List<Scenario> planScenarios(CliOptions opts, Random random, Instant baseTime) {
         List<Scenario> scenarios = new ArrayList<>();
+        // Multi-day, same-principal population first (opt-in via --customers) so the
+        // baseline has converged history before the adversarial scenarios deviate from it.
+        if (opts.populationCustomers() > 0) {
+            Instant windowStart = baseTime.minus(Duration.ofDays(opts.populationDays()));
+            scenarios.add(new SecurityMultiDayPopulationScenario(
+                    opts.populationCustomers(),
+                    opts.populationDays(),
+                    opts.eventsPerDay(),
+                    random,
+                    windowStart));
+        }
         if (opts.cleanCount() > 0) {
             scenarios.add(new CleanAuthScenario(opts.cleanCount(), random, baseTime));
         }

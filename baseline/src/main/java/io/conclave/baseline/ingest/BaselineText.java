@@ -9,7 +9,7 @@ import java.util.function.Function;
  * one it is SCORED against are always produced identically):
  * <ul>
  *   <li>the Kafka consumer feeds it an accessor over a generic Avro record;</li>
- *   <li>the ScoreEvent RPC (Stage 1c) feeds it an accessor over parsed JSON.</li>
+ *   <li>the ScoreEvent RPC feeds it an accessor over parsed JSON.</li>
  * </ul>
  *
  * <p>Amounts are bucketed so ordinary spend variation doesn't churn the text (keeping

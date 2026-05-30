@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 /**
  * Account takeover for a security principal: warmup of normal SSO logins from a
  * home IP, then sudden password auth from a foreign IP and odd user-agent. The
- * baseline embedding shifts; M5's judge fires.
+ * baseline embedding shifts; the judge fires.
  */
 public class SecurityAtoScenario implements Scenario {
 

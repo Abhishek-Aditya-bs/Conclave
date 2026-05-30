@@ -1,9 +1,9 @@
 package io.conclave.baseline.embedding;
 
 /**
- * Computes a fixed-dimensional dense embedding for a textualized event. M3 ships one
- * implementation ({@link AllMiniLmEmbeddingService}); the interface exists so future
- * milestones can swap in a domain-specific model without touching the rest of the
+ * Computes a fixed-dimensional dense embedding for a textualized event. One
+ * implementation ships today ({@link AllMiniLmEmbeddingService}); the interface exists so a
+ * domain-specific model can be swapped in later without touching the rest of the
  * service.
  */
 public interface EmbeddingService {

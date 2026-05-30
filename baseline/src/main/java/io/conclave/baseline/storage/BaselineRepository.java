@@ -4,7 +4,7 @@ import io.conclave.baseline.domain.Baseline;
 import java.util.Optional;
 
 /**
- * Storage-layer contract for the baselines table. One implementation in M3
+ * Storage-layer contract for the baselines table. One implementation
  * ({@link JdbcBaselineRepository} backed by Postgres + pgvector); the interface lets
  * benchmarks substitute in-memory variants without rebuilding tests.
  */

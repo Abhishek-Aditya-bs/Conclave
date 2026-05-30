@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * routes by Avro record type, keying the baseline on {@code baselineEntityId}
  * (cardholderId for fraud, principalId for security).
  *
- * <p>Asynchronous (spec decision): a brand-new entity is cold-start until enough of its
+ * <p>Asynchronous by design: a brand-new entity is cold-start until enough of its
  * events have been folded in. Embedding each event (MiniLM, in-JVM) happens on the
  * listener thread — fine for the demo / paper volumes.
  *

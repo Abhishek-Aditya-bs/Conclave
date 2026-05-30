@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 
 /**
  * Lateral movement: one principal authenticates to a sequence of hosts in quick
- * succession. M4's {@code SecurityLateralMovementTemplate} flags above the
+ * succession. The graph reasoner's {@code SecurityLateralMovementTemplate} flags above the
  * 5-host threshold; we emit 8 hops by default so the signal is unambiguous.
  *
  * <p>Uses SSH_KEY auth on most hops because that's the realistic blast-radius

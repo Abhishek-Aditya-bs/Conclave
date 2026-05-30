@@ -111,11 +111,13 @@ class BaselineServiceTest {
     }
 
     @Test
-    @DisplayName("EMA decay near 1.0 means new events barely move the baseline")
+    @DisplayName("EMA decay near 1.0 means new events barely move a well-established baseline")
     void emaWithHighDecayBarelyMoves() {
         BaselineRepository repo = mock(BaselineRepository.class);
+        // eventCount high enough that the count-aware warmup has saturated to the
+        // configured decay (warmup is past once n > 1/(1-decay) = 100 here).
         Baseline existing = new Baseline("e1", "fraud",
-                new float[]{0, 0, 0, 0}, 1, Instant.EPOCH);
+                new float[]{0, 0, 0, 0}, 500, Instant.EPOCH);
         when(repo.find(anyString(), anyString())).thenReturn(Optional.of(existing));
 
         float[] fresh = {1, 1, 1, 1};
@@ -127,6 +129,29 @@ class BaselineServiceTest {
         for (float f : result.embedding()) {
             assertThat(f).isCloseTo(0.01f, within(1e-5f));
         }
+    }
+
+    @Test
+    @DisplayName("Count-aware warmup averages the early events instead of pinning the first")
+    void emaWarmupAveragesEarlyEvents() {
+        BaselineRepository repo = mock(BaselineRepository.class);
+        // One prior event → this update is the 2nd (n=2). A plain decay=0.85 EMA would
+        // give the new event only 15% weight; the warmup uses effDecay = 1 - 1/2 = 0.5,
+        // i.e. a true mean of the two events.
+        Baseline existing = new Baseline("e1", "fraud",
+                new float[]{0, 0, 0, 0}, 1, Instant.EPOCH);
+        when(repo.find(anyString(), anyString())).thenReturn(Optional.of(existing));
+
+        float[] fresh = {1, 1, 1, 1};
+        BaselineService svc = new BaselineService(
+                repo, stubEmbedder(fresh), new BaselineProperties(0.85, 4), FIXED_CLOCK);
+
+        Baseline result = svc.update("fraud", "e1", "second event");
+
+        for (float f : result.embedding()) {
+            assertThat(f).isCloseTo(0.5f, within(1e-5f));
+        }
+        assertThat(result.eventCount()).isEqualTo(2L);
     }
 
     @Test

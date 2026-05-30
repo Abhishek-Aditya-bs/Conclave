@@ -14,8 +14,8 @@ import java.util.stream.Stream;
 /**
  * Classic card-testing attack: a single attacker-controlled device fingerprint
  * runs many small ($1–$5) authorizations across freshly stolen cards to verify
- * which numbers are still live. The graph reasoner (M4
- * {@code FraudCardTestingRingTemplate}) is exactly the detector for this.
+ * which numbers are still live. The graph reasoner's
+ * {@code FraudCardTestingRingTemplate} is exactly the detector for this.
  *
  * <p>One ring emits {@link #cardCount} cards × {@link #attemptsPerCard} attempts
  * each, all sharing the same device + IP + (usually) merchant. Different rings

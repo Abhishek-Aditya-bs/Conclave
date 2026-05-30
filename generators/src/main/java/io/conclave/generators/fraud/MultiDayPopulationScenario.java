@@ -19,7 +19,7 @@ import java.util.stream.Stream;
  * <p>Generates {@code customers × days × eventsPerDay} CLEAN events. Each customer keeps a
  * stable {@link CustomerProfile} (identity, devices, merchants) across the whole window and
  * draws every transaction amount from their own {@link Distributions.Kind}. The result is a
- * realistic spread of per-customer behaviour over time — the negative-class history the M3
+ * realistic spread of per-customer behaviour over time — the negative-class history the
  * baseline learns from before the adversarial scenarios (ATO, bust-out, card-testing) try
  * to deviate from it.
  *

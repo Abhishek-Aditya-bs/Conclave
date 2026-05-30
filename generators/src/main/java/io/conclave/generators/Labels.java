@@ -4,7 +4,7 @@ package io.conclave.generators;
  * Ground-truth labels emitted on the {@code events.{domain}.labels} side topic.
  *
  * <p>Labels are published in lockstep with each raw event but on a SEPARATE topic
- * so the M6 orchestrator (which subscribes to {@code events.{domain}.enriched})
+ * so the orchestrator (which subscribes to {@code events.{domain}.enriched})
  * never sees them. The eval pipeline joins decisions ↔ labels on {@code eventId}
  * to compute AUC + precision@FPR=1%.
  *

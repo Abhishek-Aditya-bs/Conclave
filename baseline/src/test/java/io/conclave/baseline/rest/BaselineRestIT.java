@@ -30,7 +30,7 @@ import org.testcontainers.utility.DockerImageName;
  * REST integration test. Boots the full Spring context against a Testcontainers
  * pgvector instance and exercises both endpoints end-to-end with a real HTTP client.
  *
- * <p>The headline test ({@link #ninetyDaySyntheticStream}) is the spec's M3 acceptance
+ * <p>The headline test ({@link #ninetyDaySyntheticStream}) is the key acceptance
  * criterion — feed 90 days of synthetic events for several entities, verify the
  * baseline embedding actually drifts toward the steady-state pattern.
  */

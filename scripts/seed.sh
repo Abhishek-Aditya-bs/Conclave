@@ -27,7 +27,9 @@ if [ "$DOMAIN" = "fraud" ]; then
   DEFAULT_ARGS="--customers 40 --days 14 --events-per-day 3 --distribution mix --clean 200 --rings 2 --ato 1 --extra 1"
 else
   MAIN="io.conclave.generators.security.SecurityGeneratorMain"
-  DEFAULT_ARGS="--clean 200 --rings 1 --ato 1 --extra 1"
+  # Multi-day principal population (30 principals × 14 days × 3/day) builds real
+  # per-principal baselines before the adversarial campaigns deviate from them.
+  DEFAULT_ARGS="--customers 30 --days 14 --events-per-day 3 --clean 200 --rings 1 --ato 1 --extra 1"
 fi
 ARGS="${*:-$DEFAULT_ARGS}"
 

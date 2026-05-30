@@ -41,6 +41,11 @@ conclave:
     # to "remember" (e.g. for ~1 event/day and a ~3-week memory, use ~0.95). Scoring
     # (ScoreEvent) is read-only and never folds the scored event back in, so the
     # baseline is not polluted by the very events it is judging.
+    #
+    # The update applies a count-aware warmup — effDecay = min(decay, 1 - 1/n) — so a
+    # new entity's first ~1/(1-decay) events form an unbiased running mean before the
+    # EMA takes over. Without it a high decay would leave the profile stuck near the
+    # entity's very first event, making early ScoreEvent results untrustworthy.
     ema-decay: 0.85
     # Embedding dimension. Must match the langchain4j model (MiniLM-L6-v2 = 384).
     embedding-dim: 384

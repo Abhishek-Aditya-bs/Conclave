@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 /**
  * Bust-out: a cardholder establishes a clean history with small repayments, then
- * abruptly maxes the line. M3's baseline catches the regime change after the line
+ * abruptly maxes the line. The baseline catches the regime change after the line
  * exceeds the per-entity envelope.
  *
  * <p>The benign tail is intentionally longer than ATO's so the baseline embedding

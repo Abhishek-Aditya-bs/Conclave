@@ -11,7 +11,7 @@ import java.util.Random;
  * fixes the things that should stay constant for a real customer — home country, currency,
  * card token, a small device pool, a handful of habitual merchants, a preferred channel —
  * plus the amount <em>distribution</em> their spend is drawn from. Reusing the same
- * profile across days is what lets the M3 baseline converge to a per-customer steady state
+ * profile across days is what lets the baseline converge to a per-customer steady state
  * that a later anomalous event can then deviate from.
  */
 final class CustomerProfile {

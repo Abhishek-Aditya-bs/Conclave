@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 
 /**
  * Account takeover: a cardholder with a long benign history suddenly transacts from
- * a far country on an unfamiliar device. M3's behavioral baseline embedding shifts;
+ * a far country on an unfamiliar device. The behavioral baseline embedding shifts;
  * the judge fires.
  *
  * <p>Emits a short benign warmup tail followed by the takeover transactions so an

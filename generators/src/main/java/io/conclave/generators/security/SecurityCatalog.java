@@ -17,7 +17,7 @@ final class SecurityCatalog {
 
     static final List<String> HOMES = List.of("workstation-1", "workstation-2", "workstation-3");
 
-    /** Hosts that imply elevated access and feed M4's PrivilegedAccessTemplate. */
+    /** Hosts that imply elevated access and feed the graph reasoner's PrivilegedAccessTemplate. */
     static final List<String> SENSITIVE_HOSTS = List.of(
             "prod-db-1", "prod-db-2", "vault-1", "vault-2", "billing-1", "secrets-1");
 

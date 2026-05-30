@@ -21,7 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * p99 lookup latency test — the spec asks for {@code &lt; 20ms} at the M3 acceptance bar.
+ * p99 lookup latency test — the target is {@code &lt; 20ms} p99.
  *
  * <p>Setup: seed 10,000 baselines, then run 1000 random lookups via the repository
  * (bypassing HTTP/gRPC framing — the contract is the repository's own p99). Measures

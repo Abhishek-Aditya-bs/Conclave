@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * Spring Boot entrypoint for the CONCLAVE M3 Behavioral Baseline Service.
+ * Spring Boot entrypoint for the CONCLAVE Behavioral Baseline Service.
  *
  * <p>Exposes BOTH a REST API (port 8081) AND a gRPC service (port 9091) over a single
  * shared {@code BaselineService} bean. Storage is Postgres + pgvector; embeddings are

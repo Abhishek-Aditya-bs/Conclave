@@ -25,14 +25,22 @@ import org.springframework.stereotype.Service;
  * <ul>
  *   <li>{@link #get} — fetch the current rolling embedding, or empty if unseen.</li>
  *   <li>{@link #update} — embed the new event text, fold it into the existing baseline
- *       via exponential moving average ({@code new = decay * old + (1 - decay) * fresh}),
- *       and persist.</li>
+ *       via a count-aware exponential moving average, and persist.</li>
  * </ul>
  *
  * <p>An EMA was chosen over the "store last 90 days of events and recompute" approach
  * because the latter is O(events) per update and triples storage. EMA is O(1) per
  * update and matches a 90-day rolling window when the decay factor is tuned to the
  * expected event rate — see [docs/adr/0002-baseline-storage-and-embedding.md].
+ *
+ * <p><b>Cold-start bias &amp; the warmup.</b> A plain EMA ({@code new = decay*old +
+ * (1-decay)*fresh}) with a high decay would pin a new entity's profile near its very
+ * first event for many updates (the 2nd event of a decay=0.85 profile gets only 15%
+ * weight). To avoid that, the effective decay is ramped: {@code effDecay = min(decay,
+ * 1 - 1/n)} where {@code n} is the event count. For the first {@code ~1/(1-decay)}
+ * events this is an unbiased running mean; once enough events have accrued it saturates
+ * to the configured decay and behaves as a true EMA from there on. This is the standard
+ * fix for EMA cold-start bias and makes early baselines trustworthy for scoring.
  */
 @Service
 public class BaselineService {
@@ -139,16 +147,21 @@ public class BaselineService {
                               boolean coldStart, long eventCount) {}
 
     private Baseline applyEma(Baseline prev, float[] fresh) {
+        long newCount = prev.eventCount() + 1;
+        // Count-aware warmup (see class Javadoc): unbiased running mean early, then the
+        // configured EMA once enough events have accrued. Removes cold-start bias where
+        // a high decay would otherwise leave the profile stuck near the first event.
+        double effDecay = Math.min(decay, 1.0 - 1.0 / newCount);
         float[] merged = new float[fresh.length];
         float[] prior  = prev.embedding();
         for (int i = 0; i < fresh.length; i++) {
-            merged[i] = (float) (decay * prior[i] + (1.0 - decay) * fresh[i]);
+            merged[i] = (float) (effDecay * prior[i] + (1.0 - effDecay) * fresh[i]);
         }
         return new Baseline(
                 prev.entityId(),
                 prev.domain(),
                 merged,
-                prev.eventCount() + 1,
+                newCount,
                 clock.instant());
     }
 }
