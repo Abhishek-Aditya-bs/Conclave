@@ -53,6 +53,29 @@
             <artifactId>pgvector</artifactId>
         </dependency>
 
+        <!-- ===== Kafka consumer (Stage 1: roll baselines off the enriched stream) =====
+             Reads events.{fraud,security}.enriched as generic Avro records (by field
+             name, specific.avro.reader=false), textualizes each, and folds it into the
+             per-entity EMA embedding. No avro-maven-plugin needed in this module. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-reload4j</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- ===== gRPC (Spring's official starter, 1.0 GA) ===== -->
         <dependency>
             <groupId>org.springframework.grpc</groupId>

@@ -29,7 +29,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * port to a known value and connects a blocking stub.
  */
 @Testcontainers
-@SpringBootTest(classes = GraphApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = GraphApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT,
+        properties = "conclave.graph.ingest.enabled=false")
 class GraphGrpcIT {
 
     private static final int GRPC_PORT = 29092;

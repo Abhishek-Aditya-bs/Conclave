@@ -28,7 +28,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Spring + Neo4j connectivity).
  */
 @Testcontainers
-@SpringBootTest(classes = GraphApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = GraphApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT,
+        properties = "conclave.graph.ingest.enabled=false")
 class GraphRestIT {
 
     @Container

@@ -37,12 +37,16 @@ _LOG = logging.getLogger(__name__)
 
 # Spec rule #6 — judge model lock. Do not silently swap to Sonnet/Opus.
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
-# Spec §5 — Qwen3 8B is the recommended tool-calling default for laptops.
-DEFAULT_OLLAMA_MODEL = "qwen3:8b"
+# Local default — the Gemma the project owner has pulled in their Ollama.
+DEFAULT_OLLAMA_MODEL = "gemma4:e4b"
+# Serving default for the OpenAI-compatible path.
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 
 _PROVIDER_ANTHROPIC = "anthropic"
 _PROVIDER_OLLAMA = "ollama"
-_VALID_PROVIDERS = (_PROVIDER_ANTHROPIC, _PROVIDER_OLLAMA)
+_PROVIDER_OPENAI = "openai"
+_VALID_PROVIDERS = (_PROVIDER_ANTHROPIC, _PROVIDER_OLLAMA, _PROVIDER_OPENAI)
 
 
 # -------------------- I/O contract --------------------
@@ -388,10 +392,17 @@ def build_provider_from_env(env: dict[str, str] | None = None) -> LLMProvider:
     """Construct an ``LLMProvider`` from environment variables.
 
     Recognized vars (with defaults):
-      * ``JUDGE_LLM_PROVIDER`` — ``anthropic`` (default) | ``ollama``
+      * ``JUDGE_LLM_PROVIDER`` — ``anthropic`` (default) | ``openai`` | ``ollama``
       * ``JUDGE_LLM_MODEL``    — provider-specific default if unset
       * ``ANTHROPIC_API_KEY``  — required when provider=anthropic
+      * ``OPENAI_API_KEY``     — required when provider=openai
+      * ``OPENAI_BASE_URL``    — https://api.openai.com/v1 by default; point at
+                                 Ollama Cloud / OpenRouter / Groq / ... here
       * ``OLLAMA_BASE_URL``    — http://localhost:11434 by default
+
+    The two run modes wire these for you:
+      * ``local``   → provider=ollama against the host's Ollama (Gemma).
+      * ``serving`` → provider=anthropic (default) or openai, using a cloud key.
 
     Importing the provider modules is lazy so a missing optional dep
     (e.g. langchain-ollama not installed) doesn't break the Anthropic
@@ -405,8 +416,12 @@ def build_provider_from_env(env: dict[str, str] | None = None) -> LLMProvider:
             f"expected one of {_VALID_PROVIDERS}"
         )
 
+    # Docker Compose passes unset variables through as the empty string, so we
+    # treat "" / whitespace as "not provided" and fall back to provider defaults.
+    model_override = (env_map.get("JUDGE_LLM_MODEL") or "").strip()
+
     if provider_name == _PROVIDER_ANTHROPIC:
-        model = env_map.get("JUDGE_LLM_MODEL", DEFAULT_ANTHROPIC_MODEL)
+        model = model_override or DEFAULT_ANTHROPIC_MODEL
         api_key = env_map.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise ValueError(
@@ -418,9 +433,26 @@ def build_provider_from_env(env: dict[str, str] | None = None) -> LLMProvider:
         _LOG.info("Judge provider = anthropic; model = %s", model)
         return AnthropicProvider(model=model, api_key=api_key)
 
+    if provider_name == _PROVIDER_OPENAI:
+        model = model_override or DEFAULT_OPENAI_MODEL
+        api_key = env_map.get("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY is required when JUDGE_LLM_PROVIDER=openai. "
+                "It also authenticates Ollama Cloud / OpenRouter / Groq / etc. "
+                "via OPENAI_BASE_URL."
+            )
+        base_url = (env_map.get("OPENAI_BASE_URL") or "").strip() or DEFAULT_OPENAI_BASE_URL
+        from deliberation.llm.openai_provider import OpenAIProvider
+
+        _LOG.info(
+            "Judge provider = openai-compatible; model = %s; base_url = %s", model, base_url
+        )
+        return OpenAIProvider(model=model, api_key=api_key, base_url=base_url)
+
     # provider_name == _PROVIDER_OLLAMA
-    model = env_map.get("JUDGE_LLM_MODEL", DEFAULT_OLLAMA_MODEL)
-    base_url = env_map.get("OLLAMA_BASE_URL", "http://localhost:11434")
+    model = model_override or DEFAULT_OLLAMA_MODEL
+    base_url = (env_map.get("OLLAMA_BASE_URL") or "").strip() or "http://localhost:11434"
     from deliberation.llm.ollama_provider import OllamaProvider
 
     _LOG.info("Judge provider = ollama; model = %s; base_url = %s", model, base_url)

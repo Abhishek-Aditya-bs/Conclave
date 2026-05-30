@@ -26,7 +26,8 @@ import org.testcontainers.utility.DockerImageName;
  * vectors through Postgres.
  */
 @Testcontainers
-@SpringBootTest(classes = BaselineApplication.class)
+@SpringBootTest(classes = BaselineApplication.class,
+        properties = "conclave.baseline.ingest.enabled=false")
 class BaselineRepositoryIT {
 
     @Container

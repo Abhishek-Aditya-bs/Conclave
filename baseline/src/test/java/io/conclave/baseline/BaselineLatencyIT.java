@@ -31,7 +31,8 @@ import org.testcontainers.utility.DockerImageName;
  * <p>The test prints the full p50/p95/p99 distribution so reviewers can see actuals.
  */
 @Testcontainers
-@SpringBootTest(classes = BaselineApplication.class)
+@SpringBootTest(classes = BaselineApplication.class,
+        properties = "conclave.baseline.ingest.enabled=false")
 class BaselineLatencyIT {
 
     private static final Logger LOG = LoggerFactory.getLogger(BaselineLatencyIT.class);

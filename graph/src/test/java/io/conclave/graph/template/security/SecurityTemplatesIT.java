@@ -26,7 +26,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * lateral-movement + privileged-access templates fire correctly.
  */
 @Testcontainers
-@SpringBootTest(classes = GraphApplication.class)
+@SpringBootTest(classes = GraphApplication.class,
+        properties = "conclave.graph.ingest.enabled=false")
 class SecurityTemplatesIT {
 
     @Container

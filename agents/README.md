@@ -43,23 +43,28 @@ uv run python -m deliberation.server.entrypoint  # listens on :9093
 
 ## Judge LLM contract
 
-The judge node is provider-agnostic. Default is **Claude Haiku 4.5** (spec rule
-#6); a local Ollama path is available for self-hosters with no Anthropic key.
+The judge node is provider-agnostic, selected by `JUDGE_LLM_PROVIDER`:
 
 ```bash
-# Default — Anthropic, Haiku 4.5
+# Serving — Anthropic (Claude Haiku 4.5, spec rule #6)
 export JUDGE_LLM_PROVIDER=anthropic            # default
 export JUDGE_LLM_MODEL=claude-haiku-4-5-20251001
 export ANTHROPIC_API_KEY=...
 
-# Local — Ollama (any tool-calling-capable model; qwen3:8b is the recommended default)
+# Serving — OpenAI-compatible (OpenAI, Ollama Cloud, OpenRouter, Groq, …)
+export JUDGE_LLM_PROVIDER=openai
+export JUDGE_LLM_MODEL=gpt-4o-mini             # or any model the endpoint serves
+export OPENAI_API_KEY=...
+export OPENAI_BASE_URL=https://api.openai.com/v1   # swap for ollama.com/v1 etc.
+
+# Local — your host Ollama (any model you've pulled)
 export JUDGE_LLM_PROVIDER=ollama
-export JUDGE_LLM_MODEL=qwen3:8b
+export JUDGE_LLM_MODEL=gemma4:e4b
 export OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 Published benchmarks use the Anthropic path only (spec §5 caveat). The Ollama
-path is opt-in and excluded from the p99 < 600ms SLA.
+and OpenAI-compatible paths are opt-in and excluded from the p99 < 600ms SLA.
 
 ## Why this is Python, not Java
 

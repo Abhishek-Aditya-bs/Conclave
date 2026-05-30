@@ -1,22 +1,26 @@
-# CONCLAVE — full-stack demo compose file.
+# CONCLAVE — full-stack compose file.
 #
 # Brings up the data plane (Kafka + Schema Registry + Postgres pgvector +
 # Neo4j) plus all four CONCLAVE services (orchestrator + baseline + graph
-# + agents). The domain (fraud | security) is selected via
-# SPRING_PROFILES_ACTIVE — `make demo-fraud` and `make demo-security` set
-# it; here it falls through from the host shell (default fraud).
+# + agents).
 #
-# Run via:
-#   make demo-fraud
-#   make demo-security
-#   make demo-fraud-local   # adds the Ollama sidecar via the overlay file
+# Two orthogonal dimensions, both set by the scripts:
+#   • DOMAIN  (fraud | security) → SPRING_PROFILES_ACTIVE on the orchestrator.
+#   • LLM MODE (local | serving) → JUDGE_LLM_PROVIDER on the agents service.
+#       local   = host Ollama (Gemma), no API key.
+#       serving = a cloud key (Anthropic or any OpenAI-compatible endpoint).
 #
-# The Java services are built from pre-packaged Spring Boot jars (see
-# `make demo-build`). The agents service is built from its Dockerfile.
+# Run via the scripts (no Makefile):
+#   ./scripts/up.sh local fraud
+#   ./scripts/up.sh serving security
+#   ./scripts/down.sh            # tear everything down (containers + volumes)
+#
+# The Java services are built from pre-packaged Spring Boot jars (./scripts/up.sh
+# runs `mvn package` first). The agents service is built from its Dockerfile.
 #
 # Networking: services reach the broker as kafka:29092 (PLAINTEXT internal).
 # The host can reach the broker on localhost:9092 — that's what the M9
-# generators use when run from `make m9-run-fraud`.
+# generators use when run from ./scripts/seed.sh.
 
 services:
   # ───────────────────────────────────────────────────────────── infra
@@ -117,10 +121,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     environment:
       BASELINE_DB_URL: jdbc:postgresql://postgres:5432/conclave
       BASELINE_DB_USER: conclave
       BASELINE_DB_PASSWORD: conclave
+      # Stage 1: roll baselines off the enriched stream.
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8085
     ports:
       - "8081:8081"   # REST
     # gRPC port (9091) is not exposed to host — only the agents container
@@ -135,10 +146,17 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
     environment:
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: conclave-graph
+      # Stage 1: populate the graph off the enriched stream.
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8085
     ports:
       - "8082:8082"   # REST
 
@@ -151,17 +169,29 @@ services:
     depends_on:
       - baseline
       - graph
+    # Let the container reach an Ollama server running on the host (local mode).
+    # host-gateway makes host.docker.internal resolve on Linux engines too.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       DELIBERATION_PORT: "9093"
       BASELINE_SERVICE_TARGET: baseline:9091
       GRAPH_SERVICE_TARGET: graph:9092
-      # Provider selection. Default = anthropic (requires ANTHROPIC_API_KEY
-      # in the host .env). The Ollama overlay flips this to ollama +
-      # OLLAMA_BASE_URL=http://ollama:11434.
+      # Provider selection (see deliberation/llm/provider.py). The scripts wire
+      # these for you:
+      #   ./scripts/up.sh local   → JUDGE_LLM_PROVIDER=ollama (host Ollama / Gemma)
+      #   ./scripts/up.sh serving → JUDGE_LLM_PROVIDER from .env (anthropic|openai)
+      # Empty values fall back to the per-provider defaults in code.
       JUDGE_LLM_PROVIDER: ${JUDGE_LLM_PROVIDER:-anthropic}
-      JUDGE_LLM_MODEL: ${JUDGE_LLM_MODEL:-claude-haiku-4-5-20251001}
+      JUDGE_LLM_MODEL: ${JUDGE_LLM_MODEL:-}
+      # Serving — Anthropic (Claude).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      LOG_LEVEL: INFO
+      # Serving — OpenAI-compatible (OpenAI, Ollama Cloud, OpenRouter, Groq, ...).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      # Local — host Ollama. Overridable for a remote/containerized Ollama.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
   orchestrator:
     build:

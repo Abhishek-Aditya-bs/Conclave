@@ -38,7 +38,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * <p>Reports p50/p95/p99 in the log for reviewers to see actuals.
  */
 @Testcontainers
-@SpringBootTest(classes = GraphApplication.class)
+@SpringBootTest(classes = GraphApplication.class,
+        properties = "conclave.graph.ingest.enabled=false")
 class GraphLatencyIT {
 
     private static final Logger LOG = LoggerFactory.getLogger(GraphLatencyIT.class);

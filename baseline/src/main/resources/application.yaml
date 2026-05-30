@@ -10,13 +10,25 @@ spring:
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
+  # Stage 1: consume events.{domain}.enriched and roll each entity's baseline.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    properties:
+      schema.registry.url: ${SCHEMA_REGISTRY_URL:mock://conclave-default}
+      specific.avro.reader: false
+    consumer:
+      group-id: ${BASELINE_INGEST_GROUP_ID:conclave-baseline-ingest}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+  # gRPC server. spring-grpc binds spring.grpc.server.* (default port 9090);
+  # the bare "grpc.server.port" key used previously was never read by the starter.
+  grpc:
+    server:
+      port: ${BASELINE_GRPC_PORT:9091}
 
 server:
   port: ${BASELINE_REST_PORT:8081}
-
-grpc:
-  server:
-    port: ${BASELINE_GRPC_PORT:9091}
 
 conclave:
   baseline:

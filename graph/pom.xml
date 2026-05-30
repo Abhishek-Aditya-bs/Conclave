@@ -44,6 +44,30 @@
             <artifactId>neo4j-java-driver</artifactId>
         </dependency>
 
+        <!-- ===== Kafka consumer (Stage 1: populate the graph from the enriched stream) =====
+             Reads events.{fraud,security}.enriched as generic Avro records and MERGEs the
+             nodes/edges the templates query. No avro-maven-plugin here on purpose: we read
+             GenericRecord fields by name (specific.avro.reader=false) so this module never
+             needs the generated EnrichedPaymentEvent / EnrichedAuthEvent classes. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-reload4j</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- ===== gRPC ===== -->
         <dependency>
             <groupId>org.springframework.grpc</groupId>

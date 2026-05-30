@@ -27,7 +27,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * produce the expected findings.
  */
 @Testcontainers
-@SpringBootTest(classes = GraphApplication.class)
+@SpringBootTest(classes = GraphApplication.class,
+        properties = "conclave.graph.ingest.enabled=false")
 class FraudTemplatesIT {
 
     @Container

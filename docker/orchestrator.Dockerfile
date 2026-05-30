@@ -1,9 +1,9 @@
 # Runtime image for the M1/M2/M6/M7 orchestrator service.
 #
-# Built from a pre-packaged Spring Boot fat jar. The Makefile's `demo-build`
-# target runs `mvn package -DskipTests` first so this image only needs a
-# JRE — keeps `docker compose build` under 10 seconds after the first run
-# and avoids re-downloading the Maven repo inside Docker.
+# Built from a pre-packaged Spring Boot fat jar. ./scripts/up.sh runs
+# `mvn package -DskipTests` first so this image only needs a JRE — keeps
+# `docker compose build` under 10 seconds after the first run and avoids
+# re-downloading the Maven repo inside Docker.
 FROM eclipse-temurin:25-jre
 
 WORKDIR /app

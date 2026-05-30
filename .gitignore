@@ -88,3 +88,10 @@ docker-data/
 
 # ---------- Claude Code session metadata ----------
 .claude/
+
+# ---------- Internal planning docs (kept local, not pushed to GitHub) ----------
+/SCRATCHPAD.md
+/PROGRESS.md
+/DESIGN.md
+/spec.md
+/docs/

@@ -8,6 +8,7 @@ provider-agnostic — see ADR-004 for rationale.
 from .provider import (
     DEFAULT_ANTHROPIC_MODEL,
     DEFAULT_OLLAMA_MODEL,
+    DEFAULT_OPENAI_MODEL,
     JudgeInput,
     JudgeOutput,
     LLMProvider,
@@ -18,6 +19,7 @@ from .provider import (
 __all__ = [
     "DEFAULT_ANTHROPIC_MODEL",
     "DEFAULT_OLLAMA_MODEL",
+    "DEFAULT_OPENAI_MODEL",
     "JudgeInput",
     "JudgeOutput",
     "LLMProvider",

@@ -35,7 +35,8 @@ import org.testcontainers.utility.DockerImageName;
  * baseline embedding actually drifts toward the steady-state pattern.
  */
 @Testcontainers
-@SpringBootTest(classes = BaselineApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = BaselineApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT,
+        properties = "conclave.baseline.ingest.enabled=false")
 class BaselineRestIT {
 
     @Container

@@ -32,7 +32,8 @@ import org.testcontainers.utility.DockerImageName;
  * exercises both RPCs.
  */
 @Testcontainers
-@SpringBootTest(classes = BaselineApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = BaselineApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT,
+        properties = "conclave.baseline.ingest.enabled=false")
 class BaselineGrpcIT {
 
     private static final int GRPC_PORT = 19092;
