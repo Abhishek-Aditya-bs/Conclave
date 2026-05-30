@@ -30,7 +30,7 @@ import org.mockito.ArgumentCaptor;
 class BaselineServiceTest {
 
     private static final BaselineProperties PROPS_DECAY_50 =
-            new BaselineProperties(0.5, 4);
+            new BaselineProperties(0.5, 4, 0.5, 0.5);
     private static final Clock FIXED_CLOCK =
             Clock.fixed(Instant.parse("2026-05-25T12:00:00Z"), ZoneOffset.UTC);
 
@@ -102,7 +102,7 @@ class BaselineServiceTest {
 
         float[] fresh = {1, 2, 3, 4};
         BaselineService svc = new BaselineService(
-                repo, stubEmbedder(fresh), new BaselineProperties(0.0, 4), FIXED_CLOCK);
+                repo, stubEmbedder(fresh), new BaselineProperties(0.0, 4, 0.5, 0.5), FIXED_CLOCK);
 
         Baseline result = svc.update("fraud", "e1", "blah");
 
@@ -122,7 +122,7 @@ class BaselineServiceTest {
 
         float[] fresh = {1, 1, 1, 1};
         BaselineService svc = new BaselineService(
-                repo, stubEmbedder(fresh), new BaselineProperties(0.99, 4), FIXED_CLOCK);
+                repo, stubEmbedder(fresh), new BaselineProperties(0.99, 4, 0.5, 0.5), FIXED_CLOCK);
 
         Baseline result = svc.update("fraud", "e1", "blah");
 
@@ -144,7 +144,7 @@ class BaselineServiceTest {
 
         float[] fresh = {1, 1, 1, 1};
         BaselineService svc = new BaselineService(
-                repo, stubEmbedder(fresh), new BaselineProperties(0.85, 4), FIXED_CLOCK);
+                repo, stubEmbedder(fresh), new BaselineProperties(0.85, 4, 0.5, 0.5), FIXED_CLOCK);
 
         Baseline result = svc.update("fraud", "e1", "second event");
 
@@ -159,7 +159,7 @@ class BaselineServiceTest {
     void constructorRejectsDimensionMismatch() {
         BaselineRepository repo = mock(BaselineRepository.class);
         EmbeddingService embedder = stubEmbedder(new float[8]); // 8 dims
-        BaselineProperties props = new BaselineProperties(0.5, 4); // configured 4
+        BaselineProperties props = new BaselineProperties(0.5, 4, 0.5, 0.5); // configured 4
 
         assertThatThrownBy(() -> new BaselineService(repo, embedder, props, FIXED_CLOCK))
                 .isInstanceOf(IllegalStateException.class)

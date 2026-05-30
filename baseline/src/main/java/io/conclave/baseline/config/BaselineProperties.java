@@ -45,13 +45,4 @@ public record BaselineProperties(
         }
     }
 
-    /**
-     * Convenience constructor for callers (mainly tests) that predate the ScoreEvent
-     * scoring parameters; applies the same defaults as the {@code @DefaultValue}
-     * annotations. Spring's {@code @ConfigurationProperties} binding always uses a
-     * record's canonical constructor, so this extra constructor does not affect binding.
-     */
-    public BaselineProperties(double emaDecay, int embeddingDim) {
-        this(emaDecay, embeddingDim, 0.5, 0.5);
-    }
 }
